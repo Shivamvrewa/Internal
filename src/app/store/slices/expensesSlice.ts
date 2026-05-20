@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { supabase } from '../../services/supabase';
 
 export interface Expense {
   id: string;
@@ -12,84 +13,65 @@ export interface Expense {
   receiptUrl?: string;
 }
 
-const mockExpenses: Expense[] = [
-  {
-    id: 'EXP001',
-    category: 'rent',
-    amount: 25000,
-    date: '2026-05-01',
-    description: 'Monthly office rent',
-    vendor: 'Property Owner',
-    status: 'approved',
-    paymentMethod: 'Bank Transfer',
-  },
-  {
-    id: 'EXP002',
-    category: 'salary',
-    amount: 45000,
-    date: '2026-05-01',
-    description: 'Staff salaries for May',
-    status: 'approved',
-    paymentMethod: 'Bank Transfer',
-  },
-  {
-    id: 'EXP003',
-    category: 'electricity',
-    amount: 3500,
-    date: '2026-05-10',
-    description: 'Electricity bill',
-    vendor: 'Electric Company',
-    status: 'approved',
-    paymentMethod: 'UPI',
-  },
-  {
-    id: 'EXP004',
-    category: 'raw-material',
-    amount: 15000,
-    date: '2026-05-15',
-    description: 'Kitchen supplies and ingredients',
-    vendor: 'Wholesale Supplier',
-    status: 'approved',
-    paymentMethod: 'Cash',
-  },
-  {
-    id: 'EXP005',
-    category: 'marketing',
-    amount: 8000,
-    date: '2026-05-18',
-    description: 'Social media advertising',
-    vendor: 'Digital Agency',
-    status: 'pending',
-    paymentMethod: 'Card',
-  },
-];
-
 interface ExpensesState {
   expenses: Expense[];
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
 }
 
 const initialState: ExpensesState = {
-  expenses: mockExpenses,
+  expenses: [],
+  status: 'idle',
+  error: null,
 };
+
+export const fetchExpenses = createAsyncThunk('expenses/fetchExpenses', async () => {
+  const { data, error } = await supabase.from('expenses').select('*');
+  if (error) throw error;
+  return data as Expense[];
+});
+
+export const addExpenseDb = createAsyncThunk('expenses/addExpense', async (expense: Expense) => {
+  const { data, error } = await supabase.from('expenses').insert([expense]).select();
+  if (error) throw error;
+  return data[0] as Expense;
+});
 
 const expensesSlice = createSlice({
   name: 'expenses',
   initialState,
   reducers: {
-    addExpense: (state, action: PayloadAction<Expense>) => {
+    addExpenseLocal: (state, action: PayloadAction<Expense>) => {
       state.expenses.unshift(action.payload);
     },
-    updateExpense: (state, action: PayloadAction<Expense>) => {
+    updateExpenseLocal: (state, action: PayloadAction<Expense>) => {
       const index = state.expenses.findIndex(e => e.id === action.payload.id);
       if (index !== -1) {
         state.expenses[index] = action.payload;
       }
     },
-    deleteExpense: (state, action: PayloadAction<string>) => {
+    deleteExpenseLocal: (state, action: PayloadAction<string>) => {
       state.expenses = state.expenses.filter(e => e.id !== action.payload);
     },
   },
+  extraReducers(builder) {
+    builder
+      .addCase(fetchExpenses.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchExpenses.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.expenses = action.payload;
+      })
+      .addCase(fetchExpenses.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || null;
+      })
+      .addCase(addExpenseDb.fulfilled, (state, action) => {
+        state.expenses.unshift(action.payload);
+      });
+  }
 });
 
-export const { addExpense, updateExpense, deleteExpense } = expensesSlice.actions;
+export const { addExpenseLocal, updateExpenseLocal, deleteExpenseLocal } = expensesSlice.actions;
 export default expensesSlice.reducer;

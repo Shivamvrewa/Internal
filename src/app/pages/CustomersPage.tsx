@@ -131,8 +131,7 @@ export function CustomersPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Customer Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            ग्राहक प्रबंधन - Manage all your customers
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage all your customers
           </p>
         </div>
         <div className="flex gap-2">
@@ -150,16 +149,16 @@ export function CustomersPage() {
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add New Customer</DialogTitle>
-                <DialogDescription>नया ग्राहक जोड़ें - Enter customer details</DialogDescription>
+                <DialogDescription>Enter customer details</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAddCustomer}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name / पूरा नाम</Label>
+                    <Label htmlFor="name">Full Name</Label>
                     <Input id="name" name="name" required placeholder="Enter name" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile / मोबाइल</Label>
+                    <Label htmlFor="mobile">Mobile</Label>
                     <Input id="mobile" name="mobile" required placeholder="+91 98765 43210" />
                   </div>
                   <div className="space-y-2">
@@ -167,7 +166,7 @@ export function CustomersPage() {
                     <Input id="email" name="email" type="email" placeholder="email@example.com" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="plan">Plan / योजना</Label>
+                    <Label htmlFor="plan">Plan</Label>
                     <Select value={plan} onValueChange={setPlan}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select plan" />
@@ -181,11 +180,11 @@ export function CustomersPage() {
                     </Select>
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="address">Address / पता</Label>
+                    <Label htmlFor="address">Address</Label>
                     <Input id="address" name="address" required placeholder="Enter address" />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="notes">Notes / टिप्पणी</Label>
+                    <Label htmlFor="notes">Notes</Label>
                     <Textarea id="notes" name="notes" placeholder="Additional notes..." />
                   </div>
                 </div>
@@ -209,7 +208,7 @@ export function CustomersPage() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, mobile, or ID... / नाम, मोबाइल से खोजें..."
+                placeholder="Search by name, mobile, or ID...,   ..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -235,7 +234,7 @@ export function CustomersPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Customers ({filteredCustomers.length})</CardTitle>
-          <CardDescription>Complete list of all customers / सभी ग्राहकों की सूची</CardDescription>
+          <CardDescription>Complete list of all customers</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border overflow-x-auto">
@@ -243,7 +242,7 @@ export function CustomersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Name / नाम</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Status</TableHead>
@@ -328,7 +327,7 @@ export function CustomersPage() {
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Customer Details</SheetTitle>
-            <SheetDescription>ग्राहक विवरण - Complete customer profile</SheetDescription>
+            <SheetDescription>Complete customer profile</SheetDescription>
           </SheetHeader>
 
           {selectedCustomer && (

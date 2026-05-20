@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { fetchExpenses, addExpenseDb, Expense } from '../store/slices/expensesSlice';
+import { v4 as uuidv4 } from 'uuid';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -84,10 +86,37 @@ const expenseByCategory = [
 ];
 
 export function ExpensesPage() {
-  const { expenses } = useSelector((state: RootState) => state.expenses);
+  const dispatch = useDispatch<any>();
+  const { expenses, status } = useSelector((state: RootState) => state.expenses);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  
+  const [category, setCategory] = useState('rent');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+
+  useEffect(() => {
+    if (status === 'idle') {
+      dispatch(fetchExpenses());
+    }
+  }, [status, dispatch]);
+
+  const handleAddExpense = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newExpense: Expense = {
+      id: `EXP-${uuidv4().substring(0, 8).toUpperCase()}`,
+      category: category as Expense['category'],
+      amount: Number(formData.get('amount')),
+      date: formData.get('date') as string,
+      description: formData.get('description') as string,
+      vendor: formData.get('vendor') as string,
+      status: 'pending',
+      paymentMethod: paymentMethod,
+    };
+    await dispatch(addExpenseDb(newExpense));
+    setIsAddExpenseOpen(false);
+  };
 
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const approvedExpenses = expenses.filter(e => e.status === 'approved').length;
@@ -124,8 +153,7 @@ export function ExpensesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Expense Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            व्यय प्रबंधन - Track and manage all expenses
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Track and manage all expenses
           </p>
         </div>
         <div className="flex gap-2">
@@ -143,74 +171,76 @@ export function ExpensesPage() {
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Add New Expense</DialogTitle>
-                <DialogDescription>नया व्यय जोड़ें - Record expense details</DialogDescription>
+                <DialogDescription>Record expense details</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Category / श्रेणी</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="rent">Rent / किराया</SelectItem>
-                      <SelectItem value="salary">Salary / वेतन</SelectItem>
-                      <SelectItem value="electricity">Electricity / बिजली</SelectItem>
-                      <SelectItem value="raw-material">Raw Material / सामग्री</SelectItem>
-                      <SelectItem value="packaging">Packaging / पैकेजिंग</SelectItem>
-                      <SelectItem value="marketing">Marketing / विपणन</SelectItem>
-                      <SelectItem value="maintenance">Maintenance / रखरखाव</SelectItem>
-                      <SelectItem value="miscellaneous">Miscellaneous / अन्य</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Amount / राशि</Label>
-                  <Input type="number" placeholder="₹ 0.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Date / तारीख</Label>
-                  <Input type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Vendor / विक्रेता (Optional)</Label>
-                  <Input placeholder="Vendor name" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description / विवरण</Label>
-                  <Textarea placeholder="Expense details..." />
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Method</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="upi">UPI</SelectItem>
-                      <SelectItem value="bank">Bank Transfer</SelectItem>
-                      <SelectItem value="card">Card</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Receipt (Optional)</Label>
-                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
-                    <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Click to upload or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, PDF up to 10MB</p>
+              <form onSubmit={handleAddExpense}>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="rent">Rent</SelectItem>
+                        <SelectItem value="salary">Salary</SelectItem>
+                        <SelectItem value="electricity">Electricity</SelectItem>
+                        <SelectItem value="raw-material">Raw Material</SelectItem>
+                        <SelectItem value="packaging">Packaging</SelectItem>
+                        <SelectItem value="marketing">Marketing</SelectItem>
+                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                        <SelectItem value="miscellaneous">Miscellaneous</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input name="amount" type="number" required placeholder="₹ 0.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input name="date" type="date" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vendor(Optional)</Label>
+                    <Input name="vendor" placeholder="Vendor name" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea name="description" required placeholder="Expense details..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Payment Method</Label>
+                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="upi">UPI</SelectItem>
+                        <SelectItem value="bank">Bank Transfer</SelectItem>
+                        <SelectItem value="card">Card</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Receipt (Optional)</Label>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+                      <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, PDF up to 10MB</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddExpenseOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => setIsAddExpenseOpen(false)}>Add Expense</Button>
-              </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsAddExpenseOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Add Expense</Button>
+                </div>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
@@ -220,7 +250,7 @@ export function ExpensesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatsCard
           title="Total Expenses"
-          titleHi="कुल व्यय"
+          titleHi=" "
           value={`₹${totalExpenses.toLocaleString('en-IN')}`}
           change="+5.2% from last month"
           changeType="neutral"
@@ -230,7 +260,7 @@ export function ExpensesPage() {
         />
         <StatsCard
           title="Approved"
-          titleHi="स्वीकृत"
+          titleHi=""
           value={approvedExpenses}
           change={`${expenses.length} total entries`}
           changeType="neutral"
@@ -240,7 +270,7 @@ export function ExpensesPage() {
         />
         <StatsCard
           title="Pending Approval"
-          titleHi="अनुमोदन लंबित"
+          titleHi=" "
           value={pendingExpenses}
           change="Awaiting review"
           changeType="neutral"
@@ -250,7 +280,7 @@ export function ExpensesPage() {
         />
         <StatsCard
           title="Average/Day"
-          titleHi="औसत/दिन"
+          titleHi="/"
           value={`₹${Math.round(totalExpenses / 19).toLocaleString('en-IN')}`}
           change="Current month"
           changeType="neutral"
@@ -265,7 +295,7 @@ export function ExpensesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Expense by Category</CardTitle>
-            <CardDescription>श्रेणी के अनुसार व्यय - Current month breakdown</CardDescription>
+            <CardDescription>Current month breakdown</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -293,7 +323,7 @@ export function ExpensesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Category Comparison</CardTitle>
-            <CardDescription>श्रेणी तुलना - Expense distribution</CardDescription>
+            <CardDescription>Expense distribution</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -326,7 +356,7 @@ export function ExpensesPage() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search expenses... / व्यय खोजें..."
+                placeholder="Search expenses......"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -357,7 +387,7 @@ export function ExpensesPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Expenses ({filteredExpenses.length})</CardTitle>
-          <CardDescription>सभी व्यय - Complete expense records</CardDescription>
+          <CardDescription>Complete expense records</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border overflow-x-auto">

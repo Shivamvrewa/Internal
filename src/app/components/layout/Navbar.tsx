@@ -32,7 +32,7 @@ export function Navbar() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search customers, payments, invoices... / ग्राहक, भुगतान खोजें..."
+              placeholder="Search customers, payments, invoices...,  ..."
               className="pl-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
             />
           </div>
@@ -70,7 +70,7 @@ export function Navbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications / सूचनाएं</DropdownMenuLabel>
+              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="space-y-2 p-2">
                 <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">

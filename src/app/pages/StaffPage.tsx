@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { fetchStaff, addStaffDb, Staff } from '../store/slices/staffSlice';
+import { v4 as uuidv4 } from 'uuid';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -53,9 +55,36 @@ const roleConfig = {
 };
 
 export function StaffPage() {
-  const { staff } = useSelector((state: RootState) => state.staff);
+  const dispatch = useDispatch<any>();
+  const { staff, status } = useSelector((state: RootState) => state.staff);
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [role, setRole] = useState('staff');
+
+  useEffect(() => {
+    if (status === 'idle') {
+      dispatch(fetchStaff());
+    }
+  }, [status, dispatch]);
+
+  const handleAddStaff = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newStaff: Staff = {
+      id: `STF-${uuidv4().substring(0, 8).toUpperCase()}`,
+      name: formData.get('name') as string,
+      role: role as Staff['role'],
+      email: formData.get('email') as string,
+      mobile: formData.get('mobile') as string,
+      salary: Number(formData.get('salary')),
+      joiningDate: formData.get('joiningDate') as string,
+      status: 'active',
+      lastActive: new Date().toISOString().split('T')[0],
+    };
+    await dispatch(addStaffDb(newStaff));
+    setIsAddStaffOpen(false);
+  };
 
   const totalStaff = staff.length;
   const activeStaff = staff.filter(s => s.status === 'active').length;
@@ -84,8 +113,7 @@ export function StaffPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Staff Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            कर्मचारी प्रबंधन - Manage team members and roles
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage team members and roles
           </p>
         </div>
         <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
@@ -98,50 +126,52 @@ export function StaffPage() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add New Staff Member</DialogTitle>
-              <DialogDescription>नया कर्मचारी जोड़ें - Enter staff details</DialogDescription>
+              <DialogDescription>Enter staff details</DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Full Name / पूरा नाम</Label>
-                <Input placeholder="Enter name" />
+            <form onSubmit={handleAddStaff}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                <div className="space-y-2">
+                  <Label>Full Name</Label>
+                  <Input name="name" required placeholder="Enter name" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="accountant">Accountant</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input name="email" type="email" required placeholder="email@example.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Mobile</Label>
+                  <Input name="mobile" required placeholder="+91 98765 43210" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Salary</Label>
+                  <Input name="salary" type="number" required placeholder="₹ 0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Joining Date</Label>
+                  <Input name="joiningDate" type="date" required />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Role / भूमिका</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin / प्रशासक</SelectItem>
-                    <SelectItem value="manager">Manager / प्रबंधक</SelectItem>
-                    <SelectItem value="accountant">Accountant / लेखाकार</SelectItem>
-                    <SelectItem value="staff">Staff / कर्मचारी</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsAddStaffOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Add Staff</Button>
               </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" placeholder="email@example.com" />
-              </div>
-              <div className="space-y-2">
-                <Label>Mobile / मोबाइल</Label>
-                <Input placeholder="+91 98765 43210" />
-              </div>
-              <div className="space-y-2">
-                <Label>Salary / वेतन</Label>
-                <Input type="number" placeholder="₹ 0.00" />
-              </div>
-              <div className="space-y-2">
-                <Label>Joining Date</Label>
-                <Input type="date" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsAddStaffOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setIsAddStaffOpen(false)}>Add Staff</Button>
-            </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -150,7 +180,7 @@ export function StaffPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatsCard
           title="Total Staff"
-          titleHi="कुल कर्मचारी"
+          titleHi=" "
           value={totalStaff}
           change="4 departments"
           changeType="neutral"
@@ -160,7 +190,7 @@ export function StaffPage() {
         />
         <StatsCard
           title="Active Today"
-          titleHi="आज सक्रिय"
+          titleHi=" "
           value={activeStaff}
           change="100% attendance"
           changeType="positive"
@@ -170,7 +200,7 @@ export function StaffPage() {
         />
         <StatsCard
           title="Total Salary"
-          titleHi="कुल वेतन"
+          titleHi=" "
           value={`₹${totalSalary.toLocaleString('en-IN')}`}
           change="Monthly cost"
           changeType="neutral"
@@ -180,7 +210,7 @@ export function StaffPage() {
         />
         <StatsCard
           title="Departments"
-          titleHi="विभाग"
+          titleHi=""
           value="4"
           change="Well organized"
           changeType="neutral"
@@ -196,7 +226,7 @@ export function StaffPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search staff by name, email, or mobile... / कर्मचारी खोजें..."
+              placeholder="Search staff by name, email, or mobile......"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -277,7 +307,7 @@ export function StaffPage() {
       <Card>
         <CardHeader>
           <CardTitle>Staff Directory</CardTitle>
-          <CardDescription>कर्मचारी निर्देशिका - Complete staff list</CardDescription>
+          <CardDescription>Complete staff list</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border overflow-x-auto">
@@ -285,7 +315,7 @@ export function StaffPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Staff ID</TableHead>
-                  <TableHead>Name / नाम</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Joining Date</TableHead>

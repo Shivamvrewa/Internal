@@ -99,8 +99,7 @@ export function AccountingPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Accounting & Cash Flow</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            लेखा और नकदी प्रवाह - Complete financial overview
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Complete financial overview
           </p>
         </div>
         <div className="flex gap-2">
@@ -114,15 +113,15 @@ export function AccountingPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Income Entry</DialogTitle>
-                <DialogDescription>आय जोड़ें - Record new income</DialogDescription>
+                <DialogDescription>Record new income</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Amount / राशि</Label>
+                  <Label>Amount</Label>
                   <Input type="number" placeholder="₹ 0.00" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Source / स्रोत</Label>
+                  <Label>Source</Label>
                   <Select>
                     <SelectTrigger>
                       <SelectValue placeholder="Select source" />
@@ -159,28 +158,28 @@ export function AccountingPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Expense Entry</DialogTitle>
-                <DialogDescription>व्यय जोड़ें - Record new expense</DialogDescription>
+                <DialogDescription>Record new expense</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Amount / राशि</Label>
+                  <Label>Amount</Label>
                   <Input type="number" placeholder="₹ 0.00" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Category / श्रेणी</Label>
+                  <Label>Category</Label>
                   <Select>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="rent">Rent / किराया</SelectItem>
-                      <SelectItem value="salary">Salary / वेतन</SelectItem>
-                      <SelectItem value="electricity">Electricity / बिजली</SelectItem>
-                      <SelectItem value="raw-material">Raw Material / सामग्री</SelectItem>
-                      <SelectItem value="packaging">Packaging / पैकेजिंग</SelectItem>
-                      <SelectItem value="marketing">Marketing / विपणन</SelectItem>
-                      <SelectItem value="maintenance">Maintenance / रखरखाव</SelectItem>
-                      <SelectItem value="miscellaneous">Miscellaneous / अन्य</SelectItem>
+                      <SelectItem value="rent">Rent</SelectItem>
+                      <SelectItem value="salary">Salary</SelectItem>
+                      <SelectItem value="electricity">Electricity</SelectItem>
+                      <SelectItem value="raw-material">Raw Material</SelectItem>
+                      <SelectItem value="packaging">Packaging</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      <SelectItem value="miscellaneous">Miscellaneous</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -210,7 +209,7 @@ export function AccountingPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatsCard
           title="Total Income"
-          titleHi="कुल आय"
+          titleHi=" "
           value={`₹${monthlyIncome.toLocaleString('en-IN')}`}
           change="+10.5% from last month"
           changeType="positive"
@@ -220,7 +219,7 @@ export function AccountingPage() {
         />
         <StatsCard
           title="Total Expenses"
-          titleHi="कुल व्यय"
+          titleHi=" "
           value={`₹${monthlyExpenses.toLocaleString('en-IN')}`}
           change="+5.2% from last month"
           changeType="neutral"
@@ -230,7 +229,7 @@ export function AccountingPage() {
         />
         <StatsCard
           title="Net Profit"
-          titleHi="शुद्ध लाभ"
+          titleHi=" "
           value={`₹${netProfit.toLocaleString('en-IN')}`}
           change={`${profitMargin}% margin`}
           changeType="positive"
@@ -240,7 +239,7 @@ export function AccountingPage() {
         />
         <StatsCard
           title="Cash Balance"
-          titleHi="नकद शेष"
+          titleHi=" "
           value={`₹${cashBalance.toLocaleString('en-IN')}`}
           change="+8.2% this month"
           changeType="positive"
@@ -256,7 +255,7 @@ export function AccountingPage() {
         <Card>
           <CardHeader>
             <CardTitle>Profit/Loss Trend</CardTitle>
-            <CardDescription>लाभ/हानि प्रवृत्ति - 6 month comparison</CardDescription>
+            <CardDescription>/6 month comparison</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -284,7 +283,7 @@ export function AccountingPage() {
         <Card>
           <CardHeader>
             <CardTitle>Monthly Comparison</CardTitle>
-            <CardDescription>मासिक तुलना - Income vs Expenses</CardDescription>
+            <CardDescription>Income vs Expenses</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -311,7 +310,7 @@ export function AccountingPage() {
       {/* Ledger & Cash Flow */}
       <Tabs defaultValue="ledger" className="w-full">
         <TabsList>
-          <TabsTrigger value="ledger">Ledger / खाता बही</TabsTrigger>
+          <TabsTrigger value="ledger">Ledger</TabsTrigger>
           <TabsTrigger value="cashflow">Cash Flow Summary</TabsTrigger>
         </TabsList>
 
@@ -319,7 +318,7 @@ export function AccountingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Account Ledger</CardTitle>
-              <CardDescription>खाता बही - All transactions in chronological order</CardDescription>
+              <CardDescription>All transactions in chronological order</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-lg border overflow-x-auto">

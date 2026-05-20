@@ -36,7 +36,7 @@ export function LoginPage() {
             </div>
             <div>
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white">BizManager</h1>
-              <p className="text-lg text-gray-600 dark:text-gray-300">व्यवसाय प्रबंधन प्रणाली</p>
+              <p className="text-lg text-gray-600 dark:text-gray-300">  </p>
             </div>
           </div>
 
@@ -97,13 +97,12 @@ export function LoginPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">BizManager</h1>
-                <p className="text-sm text-gray-500">व्यवसाय प्रबंधन</p>
+                <p className="text-sm text-gray-500"> </p>
               </div>
             </div>
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
             <CardDescription>
-              Sign in to your account / अपने खाते में साइन इन करें
-            </CardDescription>
+              Sign in to your account</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="email" className="w-full">
@@ -135,7 +134,7 @@ export function LoginPage() {
 
                 <TabsContent value="mobile" className="mt-0">
                   <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile Number / मोबाइल नंबर</Label>
+                    <Label htmlFor="mobile">Mobile Number</Label>
                     <Input
                       id="mobile"
                       type="tel"
@@ -149,7 +148,7 @@ export function LoginPage() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password / पासवर्ड</Label>
+                    <Label htmlFor="password">Password</Label>
                     <Button variant="link" className="px-0 text-sm">
                       Forgot password?
                     </Button>
@@ -168,8 +167,7 @@ export function LoginPage() {
                 </div>
 
                 <Button type="submit" className="w-full h-11 bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600">
-                  Sign In / साइन इन करें
-                </Button>
+                  Sign In</Button>
 
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">

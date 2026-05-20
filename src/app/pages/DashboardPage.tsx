@@ -84,8 +84,7 @@ export function DashboardPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          डैशबोर्ड - Overview of your business performance
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Overview of your business performance
         </p>
       </div>
 
@@ -93,7 +92,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatsCard
           title="Total Customers"
-          titleHi="कुल ग्राहक"
+          titleHi=" "
           value={totalCustomers}
           change="+12% from last month"
           changeType="positive"
@@ -103,7 +102,7 @@ export function DashboardPage() {
         />
         <StatsCard
           title="Active Customers"
-          titleHi="सक्रिय ग्राहक"
+          titleHi=" "
           value={activeCustomers}
           change={`${Math.round((activeCustomers / totalCustomers) * 100)}% of total`}
           changeType="positive"
@@ -113,7 +112,7 @@ export function DashboardPage() {
         />
         <StatsCard
           title="Pending Payments"
-          titleHi="बकाया भुगतान"
+          titleHi=" "
           value={pendingPayments}
           change={`₹${totalPendingAmount.toLocaleString('en-IN')} total`}
           changeType="negative"
@@ -123,7 +122,7 @@ export function DashboardPage() {
         />
         <StatsCard
           title="Cash In Hand"
-          titleHi="हाथ में नकदी"
+          titleHi="  "
           value={`₹${cashInHand.toLocaleString('en-IN')}`}
           change="+8.2% this month"
           changeType="positive"
@@ -137,7 +136,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         <StatsCard
           title="Monthly Income"
-          titleHi="मासिक आय"
+          titleHi=" "
           value={`₹${monthlyIncome.toLocaleString('en-IN')}`}
           change="+10.5% from last month"
           changeType="positive"
@@ -147,7 +146,7 @@ export function DashboardPage() {
         />
         <StatsCard
           title="Monthly Expenses"
-          titleHi="मासिक व्यय"
+          titleHi=" "
           value={`₹${monthlyExpenses.toLocaleString('en-IN')}`}
           change="+5.2% from last month"
           changeType="neutral"
@@ -157,7 +156,7 @@ export function DashboardPage() {
         />
         <StatsCard
           title="Net Profit"
-          titleHi="शुद्ध लाभ"
+          titleHi=" "
           value={`₹${netProfit.toLocaleString('en-IN')}`}
           change={`${Math.round((netProfit / monthlyIncome) * 100)}% margin`}
           changeType="positive"
@@ -173,7 +172,7 @@ export function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Income vs Expenses</CardTitle>
-            <CardDescription>आय बनाम व्यय - Monthly comparison</CardDescription>
+            <CardDescription>Monthly comparison</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -200,7 +199,7 @@ export function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Expense Breakdown</CardTitle>
-            <CardDescription>व्यय विवरण - Current month</CardDescription>
+            <CardDescription>Current month</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -235,7 +234,7 @@ export function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Weekly Cash Flow</CardTitle>
-            <CardDescription>साप्ताहिक नकदी प्रवाह - Last 7 days</CardDescription>
+            <CardDescription>Last 7 days</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -272,7 +271,7 @@ export function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Recent Payments</CardTitle>
-              <CardDescription>हाल की भुगतान - Latest transactions</CardDescription>
+              <CardDescription>Latest transactions</CardDescription>
             </div>
             <Button variant="ghost" size="sm">
               View All
@@ -311,7 +310,7 @@ export function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Upcoming Dues</CardTitle>
-              <CardDescription>आगामी बकाया - Payments due soon</CardDescription>
+              <CardDescription>Payments due soon</CardDescription>
             </div>
             <Button variant="ghost" size="sm">
               View All

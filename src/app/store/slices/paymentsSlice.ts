@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { supabase } from '../../services/supabase';
 
 export interface Payment {
   id: string;
@@ -13,65 +14,62 @@ export interface Payment {
   notes?: string;
 }
 
-const mockPayments: Payment[] = [
-  {
-    id: 'PAY001',
-    customerId: 'CUST001',
-    customerName: 'राज कुमार / Raj Kumar',
-    amount: 3000,
-    date: '2026-05-19',
-    method: 'upi',
-    status: 'completed',
-    type: 'full',
-    invoiceNumber: 'INV-2026-001',
-  },
-  {
-    id: 'PAY002',
-    customerId: 'CUST002',
-    customerName: 'प्रिया शर्मा / Priya Sharma',
-    amount: 1500,
-    date: '2026-05-18',
-    method: 'cash',
-    status: 'completed',
-    type: 'partial',
-    invoiceNumber: 'INV-2026-002',
-  },
-  {
-    id: 'PAY003',
-    customerId: 'CUST005',
-    customerName: 'विक्रम सिंह / Vikram Singh',
-    amount: 3000,
-    date: '2026-05-17',
-    method: 'bank',
-    status: 'completed',
-    type: 'full',
-    invoiceNumber: 'INV-2026-003',
-  },
-];
-
 interface PaymentsState {
   payments: Payment[];
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
 }
 
 const initialState: PaymentsState = {
-  payments: mockPayments,
+  payments: [],
+  status: 'idle',
+  error: null,
 };
+
+export const fetchPayments = createAsyncThunk('payments/fetchPayments', async () => {
+  const { data, error } = await supabase.from('payments').select('*');
+  if (error) throw error;
+  return data as Payment[];
+});
+
+export const addPaymentDb = createAsyncThunk('payments/addPayment', async (payment: Payment) => {
+  const { data, error } = await supabase.from('payments').insert([payment]).select();
+  if (error) throw error;
+  return data[0] as Payment;
+});
 
 const paymentsSlice = createSlice({
   name: 'payments',
   initialState,
   reducers: {
-    addPayment: (state, action: PayloadAction<Payment>) => {
+    addPaymentLocal: (state, action: PayloadAction<Payment>) => {
       state.payments.unshift(action.payload);
     },
-    updatePayment: (state, action: PayloadAction<Payment>) => {
+    updatePaymentLocal: (state, action: PayloadAction<Payment>) => {
       const index = state.payments.findIndex(p => p.id === action.payload.id);
       if (index !== -1) {
         state.payments[index] = action.payload;
       }
     },
   },
+  extraReducers(builder) {
+    builder
+      .addCase(fetchPayments.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchPayments.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.payments = action.payload;
+      })
+      .addCase(fetchPayments.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || null;
+      })
+      .addCase(addPaymentDb.fulfilled, (state, action) => {
+        state.payments.unshift(action.payload);
+      });
+  }
 });
 
-export const { addPayment, updatePayment } = paymentsSlice.actions;
+export const { addPaymentLocal, updatePaymentLocal } = paymentsSlice.actions;
 export default paymentsSlice.reducer;

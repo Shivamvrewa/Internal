@@ -15,14 +15,14 @@ import { cn } from '../ui/utils';
 import { Button } from '../ui/button';
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', labelHi: 'डैशबोर्ड' },
-  { to: '/customers', icon: Users, label: 'Customers', labelHi: 'ग्राहक' },
-  { to: '/payments', icon: CreditCard, label: 'Payments', labelHi: 'भुगतान' },
-  { to: '/accounting', icon: TrendingUp, label: 'Accounting', labelHi: 'लेखा' },
-  { to: '/expenses', icon: Receipt, label: 'Expenses', labelHi: 'व्यय' },
-  { to: '/staff', icon: UserCog, label: 'Staff', labelHi: 'कर्मचारी' },
-  { to: '/reports', icon: FileText, label: 'Reports', labelHi: 'रिपोर्ट' },
-  { to: '/settings', icon: Settings, label: 'Settings', labelHi: 'सेटिंग्स' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', labelHi: '' },
+  { to: '/customers', icon: Users, label: 'Customers', labelHi: '' },
+  { to: '/payments', icon: CreditCard, label: 'Payments', labelHi: '' },
+  { to: '/accounting', icon: TrendingUp, label: 'Accounting', labelHi: '' },
+  { to: '/expenses', icon: Receipt, label: 'Expenses', labelHi: '' },
+  { to: '/staff', icon: UserCog, label: 'Staff', labelHi: '' },
+  { to: '/reports', icon: FileText, label: 'Reports', labelHi: '' },
+  { to: '/settings', icon: Settings, label: 'Settings', labelHi: '' },
 ];
 
 export function Sidebar() {
@@ -62,7 +62,7 @@ export function Sidebar() {
               </div>
               <div>
                 <h1 className="font-bold text-lg text-gray-900 dark:text-white">BizManager</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">व्यवसाय प्रबंधन</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400"> </p>
               </div>
             </div>
             <Button
@@ -104,7 +104,7 @@ export function Sidebar() {
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <div className="px-4 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-emerald-500 text-white">
               <p className="text-sm font-medium">Need Help?</p>
-              <p className="text-xs opacity-90">सहायता चाहिए?</p>
+              <p className="text-xs opacity-90"> ?</p>
               <Button
                 variant="secondary"
                 size="sm"

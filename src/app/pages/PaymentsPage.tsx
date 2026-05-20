@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { fetchPayments, addPaymentDb, Payment } from '../store/slices/paymentsSlice';
+import { fetchCustomers } from '../store/slices/customersSlice';
+import { v4 as uuidv4 } from 'uuid';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -46,10 +49,45 @@ import {
 import { StatsCard } from '../components/analytics/StatsCard';
 
 export function PaymentsPage() {
-  const { payments } = useSelector((state: RootState) => state.payments);
-  const { customers } = useSelector((state: RootState) => state.customers);
+  const dispatch = useDispatch<any>();
+  const { payments, status: paymentsStatus } = useSelector((state: RootState) => state.payments);
+  const { customers, status: customersStatus } = useSelector((state: RootState) => state.customers);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [customerId, setCustomerId] = useState('');
+  const [method, setMethod] = useState('cash');
+  const [type, setType] = useState('full');
+
+  useEffect(() => {
+    if (paymentsStatus === 'idle') {
+      dispatch(fetchPayments());
+    }
+    if (customersStatus === 'idle') {
+      dispatch(fetchCustomers());
+    }
+  }, [paymentsStatus, customersStatus, dispatch]);
+
+  const handleAddPayment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) return;
+
+    const newPayment: Payment = {
+      id: `PAY-${uuidv4().substring(0, 8).toUpperCase()}`,
+      customerId,
+      customerName: customer.name,
+      amount: Number(formData.get('amount')),
+      date: formData.get('date') as string,
+      method: method as Payment['method'],
+      status: 'completed',
+      type: type as Payment['type'],
+      invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+    };
+    await dispatch(addPaymentDb(newPayment));
+    setIsAddPaymentOpen(false);
+  };
 
   const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
   const completedPayments = payments.filter(p => p.status === 'completed').length;
@@ -92,8 +130,7 @@ export function PaymentsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Payment Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            भुगतान प्रबंधन - Track all payments and dues
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Track all payments and dues
           </p>
         </div>
         <div className="flex gap-2">
@@ -111,66 +148,68 @@ export function PaymentsPage() {
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Record New Payment</DialogTitle>
-                <DialogDescription>नया भुगतान दर्ज करें - Add payment details</DialogDescription>
+                <DialogDescription>Add payment details</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customer">Customer / ग्राहक</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map(customer => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name} - {customer.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <form onSubmit={handleAddPayment}>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="customer">Customer</Label>
+                    <Select value={customerId} onValueChange={setCustomerId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map(customer => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name} - {customer.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input id="amount" name="amount" type="number" required placeholder="₹ 0.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="method">Payment Method</Label>
+                    <Select value={method} onValueChange={setMethod}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="upi">UPI</SelectItem>
+                        <SelectItem value="bank">Bank Transfer</SelectItem>
+                        <SelectItem value="card">Card</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Payment Type</Label>
+                    <Select value={type} onValueChange={setType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="full">Full Payment</SelectItem>
+                        <SelectItem value="partial">Partial Payment</SelectItem>
+                        <SelectItem value="emi">EMI/Installment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input id="date" name="date" type="date" required />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount / राशि</Label>
-                  <Input id="amount" type="number" placeholder="₹ 0.00" />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsAddPaymentOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={!customerId}>Record Payment</Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="method">Payment Method / भुगतान विधि</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash / नकद</SelectItem>
-                      <SelectItem value="upi">UPI</SelectItem>
-                      <SelectItem value="bank">Bank Transfer / बैंक</SelectItem>
-                      <SelectItem value="card">Card / कार्ड</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type">Payment Type</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full">Full Payment</SelectItem>
-                      <SelectItem value="partial">Partial Payment</SelectItem>
-                      <SelectItem value="emi">EMI/Installment</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date / तारीख</Label>
-                  <Input id="date" type="date" />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddPaymentOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => setIsAddPaymentOpen(false)}>Record Payment</Button>
-              </div>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
@@ -180,7 +219,7 @@ export function PaymentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatsCard
           title="Total Collected"
-          titleHi="कुल एकत्रित"
+          titleHi=" "
           value={`₹${totalPayments.toLocaleString('en-IN')}`}
           change="+15% this month"
           changeType="positive"
@@ -190,7 +229,7 @@ export function PaymentsPage() {
         />
         <StatsCard
           title="Completed"
-          titleHi="पूर्ण भुगतान"
+          titleHi=" "
           value={completedPayments}
           change={`${payments.length} total payments`}
           changeType="neutral"
@@ -200,7 +239,7 @@ export function PaymentsPage() {
         />
         <StatsCard
           title="Pending Dues"
-          titleHi="बकाया राशि"
+          titleHi=" "
           value={`₹${totalPending.toLocaleString('en-IN')}`}
           change={`${customers.filter(c => c.pendingAmount > 0).length} customers`}
           changeType="negative"
@@ -210,7 +249,7 @@ export function PaymentsPage() {
         />
         <StatsCard
           title="This Month"
-          titleHi="इस महीने"
+          titleHi=" "
           value={`₹${totalPayments.toLocaleString('en-IN')}`}
           change="+12% from last month"
           changeType="positive"
@@ -234,7 +273,7 @@ export function PaymentsPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <CardTitle>All Payments</CardTitle>
-                  <CardDescription>सभी भुगतान - Complete payment records</CardDescription>
+                  <CardDescription>Complete payment records</CardDescription>
                 </div>
                 <div className="relative w-full md:w-80">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -253,7 +292,7 @@ export function PaymentsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Payment ID</TableHead>
-                      <TableHead>Customer / ग्राहक</TableHead>
+                      <TableHead>Customer</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Method</TableHead>
@@ -308,7 +347,7 @@ export function PaymentsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Pending Dues</CardTitle>
-              <CardDescription>बकाया भुगतान - Customers with outstanding payments</CardDescription>
+              <CardDescription>Customers with outstanding payments</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-lg border overflow-x-auto">
@@ -316,7 +355,7 @@ export function PaymentsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Customer ID</TableHead>
-                      <TableHead>Name / नाम</TableHead>
+                      <TableHead>Name</TableHead>
                       <TableHead>Mobile</TableHead>
                       <TableHead>Plan</TableHead>
                       <TableHead>Due Amount</TableHead>
@@ -367,7 +406,7 @@ export function PaymentsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Payment History</CardTitle>
-              <CardDescription>भुगतान इतिहास - Chronological payment records</CardDescription>
+              <CardDescription>Chronological payment records</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
