@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { supabase } from '../../services/supabase';
 
 export interface Customer {
   id: string;
@@ -23,127 +24,71 @@ export interface Customer {
   notes?: string;
 }
 
-const mockCustomers: Customer[] = [
-  {
-    id: 'CUST001',
-    name: 'राज कुमार / Raj Kumar',
-    mobile: '+91 98765 43210',
-    address: 'Sector 15, Noida',
-    joiningDate: '2024-01-15',
-    plan: 'Premium Monthly',
-    paymentStatus: 'active',
-    daysRemaining: 20,
-    pendingAmount: 0,
-    lastPaymentDate: '2026-05-01',
-    totalPaid: 15000,
-    email: 'raj@example.com',
-    payments: [
-      { id: 'PAY001', amount: 3000, date: '2026-05-01', method: 'UPI', status: 'completed' },
-      { id: 'PAY002', amount: 3000, date: '2026-04-01', method: 'Cash', status: 'completed' },
-    ],
-    notes: 'Regular customer, very punctual with payments',
-  },
-  {
-    id: 'CUST002',
-    name: 'प्रिया शर्मा / Priya Sharma',
-    mobile: '+91 98123 45678',
-    address: 'Dwarka, Delhi',
-    joiningDate: '2024-03-20',
-    plan: 'Basic Quarterly',
-    paymentStatus: 'pending',
-    daysRemaining: 5,
-    pendingAmount: 2500,
-    lastPaymentDate: '2026-02-15',
-    totalPaid: 7500,
-    email: 'priya@example.com',
-    payments: [
-      { id: 'PAY003', amount: 2500, date: '2026-02-15', method: 'Bank Transfer', status: 'completed' },
-    ],
-  },
-  {
-    id: 'CUST003',
-    name: 'अमित पटेल / Amit Patel',
-    mobile: '+91 99876 54321',
-    address: 'Koramangala, Bangalore',
-    joiningDate: '2023-11-10',
-    plan: 'Premium Annual',
-    paymentStatus: 'active',
-    daysRemaining: 180,
-    pendingAmount: 0,
-    lastPaymentDate: '2025-11-10',
-    totalPaid: 30000,
-    email: 'amit@example.com',
-    payments: [
-      { id: 'PAY004', amount: 30000, date: '2025-11-10', method: 'Card', status: 'completed' },
-    ],
-  },
-  {
-    id: 'CUST004',
-    name: 'सुनीता देवी / Sunita Devi',
-    mobile: '+91 97654 32109',
-    address: 'Varanasi, UP',
-    joiningDate: '2025-12-01',
-    plan: 'Basic Monthly',
-    paymentStatus: 'overdue',
-    daysRemaining: -10,
-    pendingAmount: 3500,
-    lastPaymentDate: '2026-03-01',
-    totalPaid: 4500,
-    email: 'sunita@example.com',
-    payments: [
-      { id: 'PAY005', amount: 1500, date: '2026-03-01', method: 'Cash', status: 'completed' },
-    ],
-  },
-  {
-    id: 'CUST005',
-    name: 'विक्रम सिंह / Vikram Singh',
-    mobile: '+91 96543 21098',
-    address: 'Jaipur, Rajasthan',
-    joiningDate: '2024-06-15',
-    plan: 'Premium Monthly',
-    paymentStatus: 'active',
-    daysRemaining: 12,
-    pendingAmount: 0,
-    lastPaymentDate: '2026-05-10',
-    totalPaid: 33000,
-    email: 'vikram@example.com',
-    payments: [
-      { id: 'PAY006', amount: 3000, date: '2026-05-10', method: 'UPI', status: 'completed' },
-    ],
-  },
-];
-
 interface CustomersState {
   customers: Customer[];
   selectedCustomer: Customer | null;
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
 }
 
 const initialState: CustomersState = {
-  customers: mockCustomers,
+  customers: [],
   selectedCustomer: null,
+  status: 'idle',
+  error: null,
 };
+
+export const fetchCustomers = createAsyncThunk('customers/fetchCustomers', async () => {
+  const { data, error } = await supabase.from('customers').select('*');
+  if (error) throw error;
+  return data as Customer[];
+});
+
+export const addCustomerDb = createAsyncThunk('customers/addCustomer', async (customer: Customer) => {
+  const { data, error } = await supabase.from('customers').insert([customer]).select();
+  if (error) throw error;
+  return data[0] as Customer;
+});
 
 const customersSlice = createSlice({
   name: 'customers',
   initialState,
   reducers: {
-    addCustomer: (state, action: PayloadAction<Customer>) => {
+    setSelectedCustomer: (state, action: PayloadAction<Customer | null>) => {
+      state.selectedCustomer = action.payload;
+    },
+    // optimistic local updates if needed, though thunks handle the real data
+    addCustomerLocal: (state, action: PayloadAction<Customer>) => {
       state.customers.push(action.payload);
     },
-    updateCustomer: (state, action: PayloadAction<Customer>) => {
+    updateCustomerLocal: (state, action: PayloadAction<Customer>) => {
       const index = state.customers.findIndex(c => c.id === action.payload.id);
       if (index !== -1) {
         state.customers[index] = action.payload;
       }
     },
-    deleteCustomer: (state, action: PayloadAction<string>) => {
+    deleteCustomerLocal: (state, action: PayloadAction<string>) => {
       state.customers = state.customers.filter(c => c.id !== action.payload);
-    },
-    setSelectedCustomer: (state, action: PayloadAction<Customer | null>) => {
-      state.selectedCustomer = action.payload;
-    },
+    }
   },
+  extraReducers(builder) {
+    builder
+      .addCase(fetchCustomers.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchCustomers.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.customers = action.payload;
+      })
+      .addCase(fetchCustomers.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || null;
+      })
+      .addCase(addCustomerDb.fulfilled, (state, action) => {
+        state.customers.push(action.payload);
+      });
+  }
 });
 
-export const { addCustomer, updateCustomer, deleteCustomer, setSelectedCustomer } = customersSlice.actions;
+export const { setSelectedCustomer, addCustomerLocal, updateCustomerLocal, deleteCustomerLocal } = customersSlice.actions;
 export default customersSlice.reducer;

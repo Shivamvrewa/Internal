@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
-import { Customer, setSelectedCustomer } from '../store/slices/customersSlice';
+import { Customer, setSelectedCustomer, fetchCustomers, addCustomerDb } from '../store/slices/customersSlice';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
+import { v4 as uuidv4 } from 'uuid';
 import {
   Table,
   TableBody,
@@ -56,12 +57,42 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 export function CustomersPage() {
-  const dispatch = useDispatch();
-  const { customers, selectedCustomer } = useSelector((state: RootState) => state.customers);
+  const dispatch = useDispatch<any>();
+  const { customers, selectedCustomer, status } = useSelector((state: RootState) => state.customers);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [plan, setPlan] = useState('basic-monthly');
+
+  useEffect(() => {
+    if (status === 'idle') {
+      dispatch(fetchCustomers());
+    }
+  }, [status, dispatch]);
+
+  const handleAddCustomer = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newCustomer: Customer = {
+      id: `CUST-${uuidv4().substring(0, 8).toUpperCase()}`,
+      name: formData.get('name') as string,
+      mobile: formData.get('mobile') as string,
+      email: formData.get('email') as string,
+      plan: plan,
+      address: formData.get('address') as string,
+      notes: formData.get('notes') as string,
+      joiningDate: new Date().toISOString().split('T')[0],
+      paymentStatus: 'pending',
+      daysRemaining: 30,
+      pendingAmount: 0,
+      lastPaymentDate: '-',
+      totalPaid: 0,
+      payments: []
+    };
+    await dispatch(addCustomerDb(newCustomer));
+    setIsAddDialogOpen(false);
+  };
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
@@ -121,49 +152,52 @@ export function CustomersPage() {
                 <DialogTitle>Add New Customer</DialogTitle>
                 <DialogDescription>नया ग्राहक जोड़ें - Enter customer details</DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name / पूरा नाम</Label>
-                  <Input id="name" placeholder="Enter name" />
+              <form onSubmit={handleAddCustomer}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name / पूरा नाम</Label>
+                    <Input id="name" name="name" required placeholder="Enter name" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mobile">Mobile / मोबाइल</Label>
+                    <Input id="mobile" name="mobile" required placeholder="+91 98765 43210" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" name="email" type="email" placeholder="email@example.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plan">Plan / योजना</Label>
+                    <Select value={plan} onValueChange={setPlan}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select plan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="basic-monthly">Basic Monthly</SelectItem>
+                        <SelectItem value="premium-monthly">Premium Monthly</SelectItem>
+                        <SelectItem value="basic-quarterly">Basic Quarterly</SelectItem>
+                        <SelectItem value="premium-annual">Premium Annual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address">Address / पता</Label>
+                    <Input id="address" name="address" required placeholder="Enter address" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="notes">Notes / टिप्पणी</Label>
+                    <Textarea id="notes" name="notes" placeholder="Additional notes..." />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile / मोबाइल</Label>
-                  <Input id="mobile" placeholder="+91 98765 43210" />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Add Customer</Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="email@example.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="plan">Plan / योजना</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="basic-monthly">Basic Monthly</SelectItem>
-                      <SelectItem value="premium-monthly">Premium Monthly</SelectItem>
-                      <SelectItem value="basic-quarterly">Basic Quarterly</SelectItem>
-                      <SelectItem value="premium-annual">Premium Annual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address">Address / पता</Label>
-                  <Input id="address" placeholder="Enter address" />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="notes">Notes / टिप्पणी</Label>
-                  <Textarea id="notes" placeholder="Additional notes..." />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => setIsAddDialogOpen(false)}>Add Customer</Button>
-              </div>
+              </form>
             </DialogContent>
+
           </Dialog>
         </div>
       </div>
