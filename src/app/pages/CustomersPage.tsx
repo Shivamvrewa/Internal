@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
-import { Customer, setSelectedCustomer, fetchCustomers, addCustomerDb } from '../store/slices/customersSlice';
+import { Customer, setSelectedCustomer, fetchCustomers, addCustomerDb, updateCustomerDb, deleteCustomerDb } from '../store/slices/customersSlice';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -53,6 +53,7 @@ import {
   CreditCard,
   FileText,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
@@ -63,6 +64,8 @@ export function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [plan, setPlan] = useState('basic-monthly');
 
   useEffect(() => {
@@ -109,6 +112,39 @@ export function CustomersPage() {
   const handleViewCustomer = (customer: Customer) => {
     dispatch(setSelectedCustomer(customer));
     setIsDrawerOpen(true);
+  };
+
+  const handleEditClick = (customer: Customer) => {
+    setCustomerToEdit(customer);
+    setPlan(customer.plan);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!customerToEdit) return;
+    const formData = new FormData(e.currentTarget);
+    const updatedCustomer: Customer = {
+      ...customerToEdit,
+      name: formData.get('name') as string,
+      mobile: formData.get('mobile') as string,
+      email: formData.get('email') as string,
+      plan: plan,
+      address: formData.get('address') as string,
+      notes: formData.get('notes') as string,
+    };
+    await dispatch(updateCustomerDb(updatedCustomer));
+    setIsEditDialogOpen(false);
+    setCustomerToEdit(null);
+  };
+
+  const handleDeleteCustomer = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this customer?')) {
+      await dispatch(deleteCustomerDb(id));
+      if (selectedCustomer?.id === id) {
+        setIsDrawerOpen(false);
+      }
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -197,6 +233,61 @@ export function CustomersPage() {
               </form>
             </DialogContent>
 
+          </Dialog>
+
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Customer</DialogTitle>
+                <DialogDescription>Update customer details</DialogDescription>
+              </DialogHeader>
+              {customerToEdit && (
+                <form onSubmit={handleEditSubmit}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-name">Full Name</Label>
+                      <Input id="edit-name" name="name" defaultValue={customerToEdit.name} required placeholder="Enter name" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-mobile">Mobile</Label>
+                      <Input id="edit-mobile" name="mobile" defaultValue={customerToEdit.mobile} required placeholder="+91 98765 43210" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-email">Email</Label>
+                      <Input id="edit-email" name="email" type="email" defaultValue={customerToEdit.email} placeholder="email@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-plan">Plan</Label>
+                      <Select value={plan} onValueChange={setPlan}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select plan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basic-monthly">Basic Monthly</SelectItem>
+                          <SelectItem value="premium-monthly">Premium Monthly</SelectItem>
+                          <SelectItem value="basic-quarterly">Basic Quarterly</SelectItem>
+                          <SelectItem value="premium-annual">Premium Annual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="edit-address">Address</Label>
+                      <Input id="edit-address" name="address" defaultValue={customerToEdit.address} required placeholder="Enter address" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="edit-notes">Notes</Label>
+                      <Textarea id="edit-notes" name="notes" defaultValue={customerToEdit.notes} placeholder="Additional notes..." />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">Save Changes</Button>
+                  </div>
+                </form>
+              )}
+            </DialogContent>
           </Dialog>
         </div>
       </div>
@@ -309,8 +400,20 @@ export function CustomersPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditClick(customer)}
+                        >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteCustomer(customer.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -461,9 +564,12 @@ export function CustomersPage() {
                   <CreditCard className="h-4 w-4 mr-2" />
                   Add Payment
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1" onClick={() => handleEditClick(selectedCustomer)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Profile
+                </Button>
+                <Button variant="destructive" className="flex-none" onClick={() => handleDeleteCustomer(selectedCustomer.id)}>
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>

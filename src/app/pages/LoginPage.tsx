@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { LayoutDashboard, Lock, Mail, Phone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { toast } from 'sonner';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -18,8 +19,12 @@ export function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(login({ email: email || mobile, name: 'Admin User', role: 'Admin' }));
-    navigate('/dashboard');
+    if (email === 'Shivamvr1998@gmail.com' && password === 'Shivamvhk1978#') {
+      dispatch(login({ email, name: 'Shivam', role: 'Admin' }));
+      navigate('/dashboard');
+    } else {
+      toast.error('Invalid email or password');
+    }
   };
 
   return (
@@ -179,9 +184,9 @@ export function LoginPage() {
                 </div>
 
                 <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                  <p><strong>Email:</strong> admin@business.com</p>
-                  <p><strong>Password:</strong> demo123</p>
-                  <p className="text-xs pt-2 text-gray-500">Click "Sign In" with any credentials to access the demo</p>
+                  <p><strong>Email:</strong> Shivamvr1998@gmail.com</p>
+                  <p><strong>Password:</strong> Shivamvhk1978#</p>
+                  <p className="text-xs pt-2 text-gray-500">Sign in with these credentials to access the application</p>
                 </div>
               </form>
             </Tabs>

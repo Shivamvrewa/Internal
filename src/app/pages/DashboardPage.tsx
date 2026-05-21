@@ -1,5 +1,9 @@
-import { useSelector } from 'react-redux';
+import { useEffect, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { fetchCustomers } from '../store/slices/customersSlice';
+import { fetchPayments } from '../store/slices/paymentsSlice';
+import { fetchExpenses } from '../store/slices/expensesSlice';
 import { StatsCard } from '../components/analytics/StatsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -32,47 +36,99 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const monthlyData = [
-  { month: 'Jan', income: 85000, expenses: 45000 },
-  { month: 'Feb', income: 92000, expenses: 48000 },
-  { month: 'Mar', income: 88000, expenses: 47000 },
-  { month: 'Apr', income: 95000, expenses: 50000 },
-  { month: 'May', income: 105000, expenses: 52000 },
-];
-
-const cashFlowData = [
-  { day: 'Mon', amount: 8500 },
-  { day: 'Tue', amount: 12000 },
-  { day: 'Wed', amount: 9500 },
-  { day: 'Thu', amount: 15000 },
-  { day: 'Fri', amount: 18000 },
-  { day: 'Sat', amount: 22000 },
-  { day: 'Sun', amount: 16000 },
-];
-
-const expenseBreakdown = [
-  { name: 'Salary', value: 45000, color: '#3b82f6' },
-  { name: 'Rent', value: 25000, color: '#10b981' },
-  { name: 'Materials', value: 15000, color: '#f59e0b' },
-  { name: 'Utilities', value: 3500, color: '#ef4444' },
-  { name: 'Marketing', value: 8000, color: '#8b5cf6' },
-  { name: 'Other', value: 6500, color: '#6b7280' },
-];
-
 export function DashboardPage() {
-  const { customers } = useSelector((state: RootState) => state.customers);
-  const { payments } = useSelector((state: RootState) => state.payments);
-  const { expenses } = useSelector((state: RootState) => state.expenses);
+  const dispatch = useDispatch<any>();
+  const { customers, status: customersStatus } = useSelector((state: RootState) => state.customers);
+  const { payments, status: paymentsStatus } = useSelector((state: RootState) => state.payments);
+  const { expenses, status: expensesStatus } = useSelector((state: RootState) => state.expenses);
+
+  useEffect(() => {
+    if (customersStatus === 'idle') dispatch(fetchCustomers());
+    if (paymentsStatus === 'idle') dispatch(fetchPayments());
+    if (expensesStatus === 'idle') dispatch(fetchExpenses());
+  }, [customersStatus, paymentsStatus, expensesStatus, dispatch]);
 
   const totalCustomers = customers.length;
   const activeCustomers = customers.filter(c => c.paymentStatus === 'active').length;
   const pendingPayments = customers.filter(c => c.pendingAmount > 0).length;
   const totalPendingAmount = customers.reduce((sum, c) => sum + c.pendingAmount, 0);
 
-  const monthlyIncome = 105000;
+  const monthlyIncome = payments.reduce((sum, p) => sum + p.amount, 0);
   const monthlyExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const netProfit = monthlyIncome - monthlyExpenses;
-  const cashInHand = 245000;
+  const cashInHand = monthlyIncome - monthlyExpenses; // Simplified for realtime display
+
+  // Generate monthlyData based on actual payments and expenses
+  const monthlyData = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dataMap: Record<string, { month: string, income: number, expenses: number }> = {};
+    
+    // Initialize current year months up to current month (or all 12 if you prefer)
+    const currentMonth = new Date().getMonth();
+    for (let i = Math.max(0, currentMonth - 5); i <= currentMonth; i++) {
+      dataMap[months[i]] = { month: months[i], income: 0, expenses: 0 };
+    }
+
+    payments.forEach(p => {
+      const date = new Date(p.date);
+      const monthStr = months[date.getMonth()];
+      if (dataMap[monthStr]) {
+        dataMap[monthStr].income += p.amount;
+      }
+    });
+
+    expenses.forEach(e => {
+      const date = new Date(e.date);
+      const monthStr = months[date.getMonth()];
+      if (dataMap[monthStr]) {
+        dataMap[monthStr].expenses += e.amount;
+      }
+    });
+
+    return Object.values(dataMap);
+  }, [payments, expenses]);
+
+  // Generate expense breakdown
+  const expenseBreakdown = useMemo(() => {
+    const categoryTotals: Record<string, number> = {};
+    
+    const formatCategoryName = (cat: string) => {
+      return cat.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    };
+
+    expenses.forEach(e => {
+      const cat = e.category ? formatCategoryName(e.category) : 'Other';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + e.amount;
+    });
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'];
+    return Object.entries(categoryTotals).map(([name, value], idx) => ({
+      name,
+      value,
+      color: colors[idx % colors.length]
+    }));
+  }, [expenses]);
+
+  // Generate weekly cash flow (simplified mapping to past 7 days)
+  const cashFlowData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dataMap: Record<string, { day: string, amount: number }> = {};
+    
+    // Initialize past 7 days
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStr = days[d.getDay()];
+      dataMap[d.toISOString().split('T')[0]] = { day: dayStr, amount: 0 };
+    }
+
+    payments.forEach(p => {
+      if (dataMap[p.date]) {
+        dataMap[p.date].amount += p.amount;
+      }
+    });
+
+    return Object.values(dataMap);
+  }, [payments]);
 
   const recentPayments = payments.slice(0, 5);
   const upcomingDues = customers
@@ -301,6 +357,12 @@ export function DashboardPage() {
                   </div>
                 </div>
               ))}
+              {recentPayments.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No recent payments</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

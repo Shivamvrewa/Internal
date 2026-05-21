@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useEffect, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { fetchCustomers } from '../store/slices/customersSlice';
+import { fetchPayments } from '../store/slices/paymentsSlice';
+import { fetchExpenses } from '../store/slices/expensesSlice';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -38,33 +41,74 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 
-const monthlyRevenueData = [
-  { month: 'Jan', revenue: 85000, expenses: 45000, profit: 40000 },
-  { month: 'Feb', revenue: 92000, expenses: 48000, profit: 44000 },
-  { month: 'Mar', revenue: 88000, expenses: 47000, profit: 41000 },
-  { month: 'Apr', revenue: 95000, expenses: 50000, profit: 45000 },
-  { month: 'May', revenue: 105000, expenses: 52000, profit: 53000 },
-  { month: 'Jun', revenue: 98000, expenses: 51000, profit: 47000 },
-];
-
-const categoryExpenses = [
-  { name: 'Salary', value: 45000, color: '#3b82f6' },
-  { name: 'Rent', value: 25000, color: '#10b981' },
-  { name: 'Materials', value: 15000, color: '#f59e0b' },
-  { name: 'Utilities', value: 8500, color: '#ef4444' },
-  { name: 'Marketing', value: 8000, color: '#8b5cf6' },
-  { name: 'Other', value: 6500, color: '#6b7280' },
-];
-
 export function ReportsPage() {
-  const { customers } = useSelector((state: RootState) => state.customers);
-  const { payments } = useSelector((state: RootState) => state.payments);
-  const { expenses } = useSelector((state: RootState) => state.expenses);
+  const dispatch = useDispatch<any>();
+  const { customers, status: customersStatus } = useSelector((state: RootState) => state.customers);
+  const { payments, status: paymentsStatus } = useSelector((state: RootState) => state.payments);
+  const { expenses, status: expensesStatus } = useSelector((state: RootState) => state.expenses);
+
+  useEffect(() => {
+    if (customersStatus === 'idle') dispatch(fetchCustomers());
+    if (paymentsStatus === 'idle') dispatch(fetchPayments());
+    if (expensesStatus === 'idle') dispatch(fetchExpenses());
+  }, [customersStatus, paymentsStatus, expensesStatus, dispatch]);
 
   const [reportPeriod, setReportPeriod] = useState('monthly');
   const [reportType, setReportType] = useState('all');
   const [startDate, setStartDate] = useState('2024-05-01');
   const [endDate, setEndDate] = useState('2024-05-31');
+
+  // Generate monthlyRevenueData based on actual payments and expenses
+  const monthlyRevenueData = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dataMap: Record<string, { month: string, revenue: number, expenses: number, profit: number }> = {};
+    
+    // Initialize current year months up to current month
+    const currentMonth = new Date().getMonth();
+    for (let i = Math.max(0, currentMonth - 5); i <= currentMonth; i++) {
+      dataMap[months[i]] = { month: months[i], revenue: 0, expenses: 0, profit: 0 };
+    }
+
+    payments.forEach(p => {
+      const date = new Date(p.date);
+      const monthStr = months[date.getMonth()];
+      if (dataMap[monthStr]) {
+        dataMap[monthStr].revenue += p.amount;
+        dataMap[monthStr].profit = dataMap[monthStr].revenue - dataMap[monthStr].expenses;
+      }
+    });
+
+    expenses.forEach(e => {
+      const date = new Date(e.date);
+      const monthStr = months[date.getMonth()];
+      if (dataMap[monthStr]) {
+        dataMap[monthStr].expenses += e.amount;
+        dataMap[monthStr].profit = dataMap[monthStr].revenue - dataMap[monthStr].expenses;
+      }
+    });
+
+    return Object.values(dataMap);
+  }, [payments, expenses]);
+
+  // Generate categoryExpenses
+  const categoryExpenses = useMemo(() => {
+    const categoryTotals: Record<string, number> = {};
+
+    const formatCategoryName = (cat: string) => {
+      return cat.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    };
+
+    expenses.forEach(e => {
+      const cat = e.category ? formatCategoryName(e.category) : 'Other';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + e.amount;
+    });
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'];
+    return Object.entries(categoryTotals).map(([name, value], idx) => ({
+      name,
+      value,
+      color: colors[idx % colors.length]
+    }));
+  }, [expenses]);
 
   // Calculate report metrics
   const totalRevenue = monthlyRevenueData.reduce((sum, d) => sum + d.revenue, 0);

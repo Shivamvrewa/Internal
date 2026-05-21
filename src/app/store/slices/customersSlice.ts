@@ -50,6 +50,18 @@ export const addCustomerDb = createAsyncThunk('customers/addCustomer', async (cu
   return data[0] as Customer;
 });
 
+export const updateCustomerDb = createAsyncThunk('customers/updateCustomer', async (customer: Customer) => {
+  const { data, error } = await supabase.from('customers').update(customer).eq('id', customer.id).select();
+  if (error) throw error;
+  return data[0] as Customer;
+});
+
+export const deleteCustomerDb = createAsyncThunk('customers/deleteCustomer', async (id: string) => {
+  const { error } = await supabase.from('customers').delete().eq('id', id);
+  if (error) throw error;
+  return id;
+});
+
 const customersSlice = createSlice({
   name: 'customers',
   initialState,
@@ -86,6 +98,21 @@ const customersSlice = createSlice({
       })
       .addCase(addCustomerDb.fulfilled, (state, action) => {
         state.customers.push(action.payload);
+      })
+      .addCase(updateCustomerDb.fulfilled, (state, action) => {
+        const index = state.customers.findIndex(c => c.id === action.payload.id);
+        if (index !== -1) {
+          state.customers[index] = action.payload;
+        }
+        if (state.selectedCustomer?.id === action.payload.id) {
+          state.selectedCustomer = action.payload;
+        }
+      })
+      .addCase(deleteCustomerDb.fulfilled, (state, action) => {
+        state.customers = state.customers.filter(c => c.id !== action.payload);
+        if (state.selectedCustomer?.id === action.payload) {
+          state.selectedCustomer = null;
+        }
       });
   }
 });

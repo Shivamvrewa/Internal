@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useEffect, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { fetchPayments } from '../store/slices/paymentsSlice';
+import { fetchExpenses } from '../store/slices/expensesSlice';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -58,40 +60,89 @@ import {
 } from 'recharts';
 import { Badge } from '../components/ui/badge';
 
-const monthlyComparison = [
-  { month: 'Dec', income: 95000, expense: 48000, profit: 47000 },
-  { month: 'Jan', income: 85000, expense: 45000, profit: 40000 },
-  { month: 'Feb', income: 92000, expense: 48000, profit: 44000 },
-  { month: 'Mar', income: 88000, expense: 47000, profit: 41000 },
-  { month: 'Apr', income: 95000, expense: 50000, profit: 45000 },
-  { month: 'May', income: 105000, expense: 52000, profit: 53000 },
-];
-
-const cashFlowSummary = [
-  { name: 'Opening Balance', value: 200000, color: '#3b82f6' },
-  { name: 'Income', value: 105000, color: '#10b981' },
-  { name: 'Expenses', value: -52000, color: '#ef4444' },
-  { name: 'Net Change', value: 53000, color: '#8b5cf6' },
-];
-
 export function AccountingPage() {
-  const { expenses } = useSelector((state: RootState) => state.expenses);
+  const dispatch = useDispatch<any>();
+  const { expenses, status: expensesStatus } = useSelector((state: RootState) => state.expenses);
+  const { payments, status: paymentsStatus } = useSelector((state: RootState) => state.payments);
   const [isAddIncomeOpen, setIsAddIncomeOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
 
-  const monthlyIncome = 105000;
+  useEffect(() => {
+    if (expensesStatus === 'idle') dispatch(fetchExpenses());
+    if (paymentsStatus === 'idle') dispatch(fetchPayments());
+  }, [expensesStatus, paymentsStatus, dispatch]);
+
+  const monthlyIncome = payments.reduce((sum, p) => sum + p.amount, 0);
   const monthlyExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const netProfit = monthlyIncome - monthlyExpenses;
-  const profitMargin = ((netProfit / monthlyIncome) * 100).toFixed(1);
-  const cashBalance = 245000;
+  const profitMargin = monthlyIncome > 0 ? ((netProfit / monthlyIncome) * 100).toFixed(1) : '0.0';
+  const cashBalance = monthlyIncome - monthlyExpenses;
 
-  const ledgerEntries = [
-    { id: 'L001', date: '2026-05-19', description: 'Customer Payment - Raj Kumar', type: 'income', amount: 3000, balance: 245000 },
-    { id: 'L002', date: '2026-05-18', description: 'Marketing Expense', type: 'expense', amount: -8000, balance: 242000 },
-    { id: 'L003', date: '2026-05-17', description: 'Customer Payment - Vikram Singh', type: 'income', amount: 3000, balance: 250000 },
-    { id: 'L004', date: '2026-05-15', description: 'Raw Material Purchase', type: 'expense', amount: -15000, balance: 247000 },
-    { id: 'L005', date: '2026-05-10', description: 'Electricity Bill', type: 'expense', amount: -3500, balance: 262000 },
-  ];
+  // Generate monthlyComparison based on actual payments and expenses
+  const monthlyComparison = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dataMap: Record<string, { month: string, income: number, expense: number, profit: number }> = {};
+    
+    // Initialize current year months up to current month
+    const currentMonth = new Date().getMonth();
+    for (let i = Math.max(0, currentMonth - 5); i <= currentMonth; i++) {
+      dataMap[months[i]] = { month: months[i], income: 0, expense: 0, profit: 0 };
+    }
+
+    payments.forEach(p => {
+      const date = new Date(p.date);
+      const monthStr = months[date.getMonth()];
+      if (dataMap[monthStr]) {
+        dataMap[monthStr].income += p.amount;
+        dataMap[monthStr].profit = dataMap[monthStr].income - dataMap[monthStr].expense;
+      }
+    });
+
+    expenses.forEach(e => {
+      const date = new Date(e.date);
+      const monthStr = months[date.getMonth()];
+      if (dataMap[monthStr]) {
+        dataMap[monthStr].expense += e.amount;
+        dataMap[monthStr].profit = dataMap[monthStr].income - dataMap[monthStr].expense;
+      }
+    });
+
+    return Object.values(dataMap);
+  }, [payments, expenses]);
+
+  // Combine payments and expenses into ledger entries, sorted by date
+  const ledgerEntries = useMemo(() => {
+    const combined = [
+      ...payments.map(p => ({
+        id: p.id,
+        date: p.date,
+        description: `Customer Payment - ${p.customerName}`,
+        type: 'income',
+        amount: p.amount,
+        balance: 0 // Will compute running balance below
+      })),
+      ...expenses.map(e => ({
+        id: e.id,
+        date: e.date,
+        description: `${e.category || 'Expense'} - ${e.description}`,
+        type: 'expense',
+        amount: -e.amount,
+        balance: 0
+      }))
+    ];
+
+    // Sort by date descending
+    combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Compute running balance from bottom up
+    let runningBalance = 0;
+    for (let i = combined.length - 1; i >= 0; i--) {
+      runningBalance += combined[i].amount;
+      combined[i].balance = runningBalance;
+    }
+    
+    return combined;
+  }, [payments, expenses]);
 
   return (
     <div className="space-y-6">
