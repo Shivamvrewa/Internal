@@ -1,6 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router';
 import { RootLayout } from './components/layout/RootLayout';
-import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { PaymentsPage } from './pages/PaymentsPage';
@@ -9,12 +8,10 @@ import { ExpensesPage } from './pages/ExpensesPage';
 import { StaffPage } from './pages/StaffPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { OrdersPage } from './pages/OrdersPage';
 
 export const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <LoginPage />,
-  },
+
   {
     path: '/',
     element: <RootLayout />,
@@ -30,6 +27,10 @@ export const router = createBrowserRouter([
       {
         path: 'customers',
         element: <CustomersPage />,
+      },
+      {
+        path: 'orders',
+        element: <OrdersPage />,
       },
       {
         path: 'payments',

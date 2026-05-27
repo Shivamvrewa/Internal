@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { fetchPayments } from '../store/slices/paymentsSlice';
 import { fetchExpenses } from '../store/slices/expensesSlice';
+import { parseMetadata, formatDateTime, getCurrentLocalDateTimeString } from '../services/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -76,7 +77,10 @@ export function AccountingPage() {
   const monthlyExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const netProfit = monthlyIncome - monthlyExpenses;
   const profitMargin = monthlyIncome > 0 ? ((netProfit / monthlyIncome) * 100).toFixed(1) : '0.0';
-  const cashBalance = monthlyIncome - monthlyExpenses;
+  const openingBalance = 200000;
+  const cashBalance = openingBalance + monthlyIncome - monthlyExpenses;
+  const closingBalance = openingBalance + monthlyIncome - monthlyExpenses;
+  const netChange = monthlyIncome - monthlyExpenses;
 
   // Generate monthlyComparison based on actual payments and expenses
   const monthlyComparison = useMemo(() => {
@@ -113,29 +117,37 @@ export function AccountingPage() {
   // Combine payments and expenses into ledger entries, sorted by date
   const ledgerEntries = useMemo(() => {
     const combined = [
-      ...payments.map(p => ({
-        id: p.id,
-        date: p.date,
-        description: `Customer Payment - ${p.customerName}`,
-        type: 'income',
-        amount: p.amount,
-        balance: 0 // Will compute running balance below
-      })),
-      ...expenses.map(e => ({
-        id: e.id,
-        date: e.date,
-        description: `${e.category || 'Expense'} - ${e.description}`,
-        type: 'expense',
-        amount: -e.amount,
-        balance: 0
-      }))
+      ...payments.map(p => {
+        const parsed = parseMetadata(p.notes || '');
+        return {
+          id: p.id,
+          date: p.date,
+          description: `Customer Payment - ${p.customerName}`,
+          createdBy: parsed.createdBy,
+          type: 'income',
+          amount: p.amount,
+          balance: 0 // Will compute running balance below
+        };
+      }),
+      ...expenses.map(e => {
+        const parsed = parseMetadata(e.description);
+        return {
+          id: e.id,
+          date: e.date,
+          description: `${e.category || 'Expense'} - ${parsed.cleanText}`,
+          createdBy: parsed.createdBy,
+          type: 'expense',
+          amount: -e.amount,
+          balance: 0
+        };
+      })
     ];
 
     // Sort by date descending
     combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    // Compute running balance from bottom up
-    let runningBalance = 0;
+    // Compute running balance from bottom up starting from opening balance
+    let runningBalance = 200000;
     for (let i = combined.length - 1; i >= 0; i--) {
       runningBalance += combined[i].amount;
       combined[i].balance = runningBalance;
@@ -185,7 +197,7 @@ export function AccountingPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Input type="date" />
+                  <Input type="datetime-local" defaultValue={getCurrentLocalDateTimeString()} />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
@@ -236,7 +248,7 @@ export function AccountingPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Input type="date" />
+                  <Input type="datetime-local" defaultValue={getCurrentLocalDateTimeString()} />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
@@ -379,6 +391,7 @@ export function AccountingPage() {
                       <TableHead>Date</TableHead>
                       <TableHead>Entry ID</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Author</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-right">Balance</TableHead>
@@ -387,9 +400,14 @@ export function AccountingPage() {
                   <TableBody>
                     {ledgerEntries.map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell className="font-medium">{entry.date}</TableCell>
+                        <TableCell className="font-medium">{formatDateTime(entry.date)}</TableCell>
                         <TableCell className="text-gray-500">{entry.id}</TableCell>
                         <TableCell>{entry.description}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="font-semibold px-2.5 py-0.5 text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/30 rounded-full">
+                            {entry.createdBy || 'System'}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           {entry.type === 'income' ? (
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
@@ -426,7 +444,7 @@ export function AccountingPage() {
               <CardContent className="pt-6">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Opening Balance</p>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-                  ₹2,00,000
+                  ₹{openingBalance.toLocaleString('en-IN')}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">May 1, 2026</p>
               </CardContent>
@@ -436,7 +454,7 @@ export function AccountingPage() {
               <CardContent className="pt-6">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Income</p>
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-                  +₹1,05,000
+                  +₹{monthlyIncome.toLocaleString('en-IN')}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">This month</p>
               </CardContent>
@@ -456,9 +474,11 @@ export function AccountingPage() {
               <CardContent className="pt-6">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Closing Balance</p>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-2">
-                  ₹{cashBalance.toLocaleString('en-IN')}
+                  ₹{closingBalance.toLocaleString('en-IN')}
                 </p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">+₹45,000 net change</p>
+                <p className={`text-xs font-semibold mt-1 ${netChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                  {netChange >= 0 ? '+' : ''}₹{netChange.toLocaleString('en-IN')} net change
+                </p>
               </CardContent>
             </Card>
           </div>

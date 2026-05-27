@@ -33,3 +33,13 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.4);
 }
+
+/* Enforce smooth native touch inertial scrolling and momentum on Android/mobile WebViews */
+html, body {
+  overscroll-behavior-y: none; /* Prevents pulling the entire body down */
+}
+
+main, .overflow-y-auto, .overflow-auto {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: auto !important;
+}

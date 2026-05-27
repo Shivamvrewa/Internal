@@ -36,6 +36,17 @@ export const addExpenseDb = createAsyncThunk('expenses/addExpense', async (expen
   if (error) throw error;
   return data[0] as Expense;
 });
+export const updateExpenseDb = createAsyncThunk('expenses/updateExpense', async (expense: Expense) => {
+  const { data, error } = await supabase.from('expenses').update(expense).eq('id', expense.id).select();
+  if (error) throw error;
+  return data[0] as Expense;
+});
+
+export const deleteExpenseDb = createAsyncThunk('expenses/deleteExpense', async (id: string) => {
+  const { error } = await supabase.from('expenses').delete().eq('id', id);
+  if (error) throw error;
+  return id;
+});
 
 const expensesSlice = createSlice({
   name: 'expenses',
@@ -69,6 +80,15 @@ const expensesSlice = createSlice({
       })
       .addCase(addExpenseDb.fulfilled, (state, action) => {
         state.expenses.unshift(action.payload);
+      })
+      .addCase(updateExpenseDb.fulfilled, (state, action) => {
+        const index = state.expenses.findIndex(e => e.id === action.payload.id);
+        if (index !== -1) {
+          state.expenses[index] = action.payload;
+        }
+      })
+      .addCase(deleteExpenseDb.fulfilled, (state, action) => {
+        state.expenses = state.expenses.filter(e => e.id !== action.payload);
       });
   }
 });

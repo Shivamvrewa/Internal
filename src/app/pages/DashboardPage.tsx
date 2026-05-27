@@ -1,11 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router';
 import { RootState } from '../store';
 import { fetchCustomers } from '../store/slices/customersSlice';
 import { fetchPayments } from '../store/slices/paymentsSlice';
 import { fetchExpenses } from '../store/slices/expensesSlice';
 import { StatsCard } from '../components/analytics/StatsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { formatDateTime } from '../services/utils';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import {
@@ -19,6 +21,7 @@ import {
   ArrowUpRight,
   Clock,
   AlertCircle,
+  Plus,
 } from 'lucide-react';
 import {
   LineChart,
@@ -38,6 +41,7 @@ import {
 
 export function DashboardPage() {
   const dispatch = useDispatch<any>();
+  const navigate = useNavigate();
   const { customers, status: customersStatus } = useSelector((state: RootState) => state.customers);
   const { payments, status: paymentsStatus } = useSelector((state: RootState) => state.payments);
   const { expenses, status: expensesStatus } = useSelector((state: RootState) => state.expenses);
@@ -138,10 +142,27 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Overview of your business performance
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-5">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Overview of your business performance</p>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          <Button 
+            onClick={() => navigate('/payments?openAdd=true')}
+            className="bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-700 hover:to-indigo-600 text-white font-semibold flex items-center gap-1.5 shadow-sm transition-all rounded-lg"
+          >
+            <Plus className="h-4 w-4" />
+            Quick Payment
+          </Button>
+          <Button 
+            onClick={() => navigate('/expenses?openAdd=true')}
+            className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-semibold flex items-center gap-1.5 shadow-sm transition-all rounded-lg"
+          >
+            <Plus className="h-4 w-4" />
+            Quick Expense
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -344,7 +365,7 @@ export function DashboardPage() {
                     </div>
                     <div>
                       <p className="font-medium text-sm">{payment.customerName}</p>
-                      <p className="text-xs text-gray-500">{payment.date}</p>
+                      <p className="text-xs text-gray-500">{formatDateTime(payment.date)}</p>
                     </div>
                   </div>
                   <div className="text-right">

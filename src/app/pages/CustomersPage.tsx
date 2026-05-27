@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { Customer, setSelectedCustomer, fetchCustomers, addCustomerDb, updateCustomerDb, deleteCustomerDb } from '../store/slices/customersSlice';
@@ -7,6 +8,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { v4 as uuidv4 } from 'uuid';
+import { formatDateTime, calculateSubscriptionEndDate, parseSubscriptionDates, serializeSubscriptionDates, calculateDaysRemaining } from '../services/utils';
+import { PhoneActionsDropdown } from '../components/ui/phone-actions-dropdown';
 import {
   Table,
   TableBody,
@@ -59,6 +62,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 
 export function CustomersPage() {
   const dispatch = useDispatch<any>();
+  const navigate = useNavigate();
   const { customers, selectedCustomer, status } = useSelector((state: RootState) => state.customers);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -66,7 +70,54 @@ export function CustomersPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
-  const [plan, setPlan] = useState('basic-monthly');
+  const [plan, setPlan] = useState('Fruit Bowl week');
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
+
+  const computedEndDate = useMemo(() => {
+    return calculateSubscriptionEndDate(startDate, plan);
+  }, [startDate, plan]);
+
+  const todayStr = useMemo(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }, []);
+
+  const enrichedCustomers = useMemo(() => {
+    return customers.map(c => {
+      const { cleanNotes, startDate: parsedStart, endDate: parsedEnd } = parseSubscriptionDates(c.notes);
+      const fallbackStart = c.joiningDate?.split('T')[0] || todayStr;
+      const fallbackEnd = calculateSubscriptionEndDate(fallbackStart, c.plan);
+      
+      const finalStart = parsedStart || fallbackStart;
+      const finalEnd = parsedEnd || fallbackEnd;
+      
+      const dynamicDays = calculateDaysRemaining(finalEnd);
+      const dynamicStatus = dynamicDays < 0 ? 'overdue' : c.paymentStatus;
+      
+      return {
+        ...c,
+        cleanNotes,
+        startDate: finalStart,
+        endDate: finalEnd,
+        daysRemaining: dynamicDays,
+        paymentStatus: dynamicStatus
+      };
+    });
+  }, [customers, todayStr]);
+
+  const enrichedSelectedCustomer = useMemo(() => {
+    if (!selectedCustomer) return null;
+    return enrichedCustomers.find(c => c.id === selectedCustomer.id) || null;
+  }, [selectedCustomer, enrichedCustomers]);
 
   useEffect(() => {
     if (status === 'idle') {
@@ -77,6 +128,8 @@ export function CustomersPage() {
   const handleAddCustomer = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const rawNotes = formData.get('notes') as string;
+    const serializedNotes = serializeSubscriptionDates(rawNotes, startDate, computedEndDate);
     const newCustomer: Customer = {
       id: `CUST-${uuidv4().substring(0, 8).toUpperCase()}`,
       name: formData.get('name') as string,
@@ -84,10 +137,10 @@ export function CustomersPage() {
       email: formData.get('email') as string,
       plan: plan,
       address: formData.get('address') as string,
-      notes: formData.get('notes') as string,
-      joiningDate: new Date().toISOString().split('T')[0],
+      notes: serializedNotes,
+      joiningDate: startDate,
       paymentStatus: 'pending',
-      daysRemaining: 30,
+      daysRemaining: calculateDaysRemaining(computedEndDate),
       pendingAmount: 0,
       lastPaymentDate: '-',
       totalPaid: 0,
@@ -97,7 +150,7 @@ export function CustomersPage() {
     setIsAddDialogOpen(false);
   };
 
-  const filteredCustomers = customers.filter((customer) => {
+  const filteredCustomers = enrichedCustomers.filter((customer) => {
     const matchesSearch =
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.mobile.includes(searchQuery) ||
@@ -117,6 +170,8 @@ export function CustomersPage() {
   const handleEditClick = (customer: Customer) => {
     setCustomerToEdit(customer);
     setPlan(customer.plan);
+    const { startDate: parsedStart } = parseSubscriptionDates(customer.notes);
+    setStartDate(parsedStart || customer.joiningDate?.split('T')[0] || todayStr);
     setIsEditDialogOpen(true);
   };
 
@@ -124,14 +179,18 @@ export function CustomersPage() {
     e.preventDefault();
     if (!customerToEdit) return;
     const formData = new FormData(e.currentTarget);
+    const rawNotes = formData.get('notes') as string;
+    const serializedNotes = serializeSubscriptionDates(rawNotes, startDate, computedEndDate);
     const updatedCustomer: Customer = {
       ...customerToEdit,
       name: formData.get('name') as string,
       mobile: formData.get('mobile') as string,
       email: formData.get('email') as string,
       plan: plan,
+      notes: serializedNotes,
+      joiningDate: startDate,
+      daysRemaining: calculateDaysRemaining(computedEndDate),
       address: formData.get('address') as string,
-      notes: formData.get('notes') as string,
     };
     await dispatch(updateCustomerDb(updatedCustomer));
     setIsEditDialogOpen(false);
@@ -208,12 +267,35 @@ export function CustomersPage() {
                         <SelectValue placeholder="Select plan" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="basic-monthly">Basic Monthly</SelectItem>
-                        <SelectItem value="premium-monthly">Premium Monthly</SelectItem>
-                        <SelectItem value="basic-quarterly">Basic Quarterly</SelectItem>
-                        <SelectItem value="premium-annual">Premium Annual</SelectItem>
+                        <SelectItem value="Fruit Bowl week">1 Fruit Bowl week</SelectItem>
+                        <SelectItem value="Fruit Bowl Month">2 Fruit Bowl Month</SelectItem>
+                        <SelectItem value="Fruit + Drink week">3 Fruit + Drink week</SelectItem>
+                        <SelectItem value="fruit + Drink Month">4 fruit + Drink Month</SelectItem>
+                        <SelectItem value="Others">5 Others</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      name="startDate"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">End Date (Sundays Excluded)</Label>
+                    <Input
+                      id="endDate"
+                      name="endDate"
+                      type="date"
+                      value={computedEndDate}
+                      readOnly
+                      className="bg-gray-50 dark:bg-gray-800 text-gray-500 font-semibold cursor-not-allowed"
+                    />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="address">Address</Label>
@@ -263,12 +345,35 @@ export function CustomersPage() {
                           <SelectValue placeholder="Select plan" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="basic-monthly">Basic Monthly</SelectItem>
-                          <SelectItem value="premium-monthly">Premium Monthly</SelectItem>
-                          <SelectItem value="basic-quarterly">Basic Quarterly</SelectItem>
-                          <SelectItem value="premium-annual">Premium Annual</SelectItem>
+                          <SelectItem value="Fruit Bowl week">1 Fruit Bowl week</SelectItem>
+                          <SelectItem value="Fruit Bowl Month">2 Fruit Bowl Month</SelectItem>
+                          <SelectItem value="Fruit + Drink week">3 Fruit + Drink week</SelectItem>
+                          <SelectItem value="fruit + Drink Month">4 fruit + Drink Month</SelectItem>
+                          <SelectItem value="Others">5 Others</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-startDate">Start Date</Label>
+                      <Input
+                        id="edit-startDate"
+                        name="startDate"
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-endDate">End Date (Sundays Excluded)</Label>
+                      <Input
+                        id="edit-endDate"
+                        name="endDate"
+                        type="date"
+                        value={computedEndDate}
+                        readOnly
+                        className="bg-gray-50 dark:bg-gray-800 text-gray-500 font-semibold cursor-not-allowed"
+                      />
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="edit-address">Address</Label>
@@ -355,11 +460,20 @@ export function CustomersPage() {
                         <span className="font-medium">{customer.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{customer.mobile}</TableCell>
+                     <TableCell>
+                       <PhoneActionsDropdown phoneNumber={customer.mobile}>
+                         {customer.mobile}
+                       </PhoneActionsDropdown>
+                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {customer.plan}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className="w-fit text-[11px] font-semibold">
+                          {customer.plan}
+                        </Badge>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                          {customer.startDate} to {customer.endDate}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(customer.paymentStatus)}</TableCell>
                     <TableCell>
@@ -389,7 +503,7 @@ export function CustomersPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                      {customer.lastPaymentDate}
+                      {formatDateTime(customer.lastPaymentDate)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -433,21 +547,21 @@ export function CustomersPage() {
             <SheetDescription>Complete customer profile</SheetDescription>
           </SheetHeader>
 
-          {selectedCustomer && (
+          {enrichedSelectedCustomer && (
             <div className="space-y-6 mt-6">
               {/* Customer Info */}
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-start gap-4">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center text-white text-2xl font-bold">
-                      {selectedCustomer.name.charAt(0)}
+                      {enrichedSelectedCustomer.name.charAt(0)}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold">{selectedCustomer.name}</h3>
+                      <h3 className="text-xl font-bold">{enrichedSelectedCustomer.name}</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        ID: {selectedCustomer.id}
+                        ID: {enrichedSelectedCustomer.id}
                       </p>
-                      <div className="mt-2">{getStatusBadge(selectedCustomer.paymentStatus)}</div>
+                      <div className="mt-2">{getStatusBadge(enrichedSelectedCustomer.paymentStatus)}</div>
                     </div>
                   </div>
 
@@ -456,21 +570,25 @@ export function CustomersPage() {
                       <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       <div>
                         <p className="text-xs text-gray-500">Mobile</p>
-                        <p className="font-medium">{selectedCustomer.mobile}</p>
+                         <p className="font-medium">
+                           <PhoneActionsDropdown phoneNumber={enrichedSelectedCustomer.mobile}>
+                             {enrichedSelectedCustomer.mobile}
+                           </PhoneActionsDropdown>
+                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
                       <div>
                         <p className="text-xs text-gray-500">Email</p>
-                        <p className="font-medium">{selectedCustomer.email || 'N/A'}</p>
+                        <p className="font-medium">{enrichedSelectedCustomer.email || 'N/A'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg md:col-span-2">
                       <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       <div>
                         <p className="text-xs text-gray-500">Address</p>
-                        <p className="font-medium">{selectedCustomer.address}</p>
+                        <p className="font-medium">{enrichedSelectedCustomer.address}</p>
                       </div>
                     </div>
                   </div>
@@ -486,31 +604,35 @@ export function CustomersPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Plan</p>
-                      <p className="font-semibold">{selectedCustomer.plan}</p>
+                      <p className="font-semibold">{enrichedSelectedCustomer.plan}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Days Remaining</p>
-                      <p className="font-semibold">{selectedCustomer.daysRemaining} days</p>
+                      <p className="font-semibold">{enrichedSelectedCustomer.daysRemaining} days</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Joining Date</p>
-                      <p className="font-semibold">{selectedCustomer.joiningDate}</p>
+                      <p className="text-sm text-gray-500">Start Date</p>
+                      <p className="font-semibold">{enrichedSelectedCustomer.startDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">End Date (Sundays Excluded)</p>
+                      <p className="font-semibold">{enrichedSelectedCustomer.endDate}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total Paid</p>
                       <p className="font-semibold text-green-600">
-                        ₹{selectedCustomer.totalPaid.toLocaleString('en-IN')}
+                        ₹{enrichedSelectedCustomer.totalPaid.toLocaleString('en-IN')}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Pending Amount</p>
                       <p className="font-semibold text-red-600">
-                        ₹{selectedCustomer.pendingAmount.toLocaleString('en-IN')}
+                        ₹{enrichedSelectedCustomer.pendingAmount.toLocaleString('en-IN')}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Last Payment</p>
-                      <p className="font-semibold">{selectedCustomer.lastPaymentDate}</p>
+                      <p className="font-semibold">{formatDateTime(enrichedSelectedCustomer.lastPaymentDate)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -523,7 +645,7 @@ export function CustomersPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {selectedCustomer.payments.map((payment) => (
+                    {enrichedSelectedCustomer.payments.map((payment) => (
                       <div
                         key={payment.id}
                         className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
@@ -534,7 +656,7 @@ export function CustomersPage() {
                           </div>
                           <div>
                             <p className="font-medium">₹{payment.amount.toLocaleString('en-IN')}</p>
-                            <p className="text-xs text-gray-500">{payment.date}</p>
+                             <p className="text-xs text-gray-500">{formatDateTime(payment.date)}</p>
                           </div>
                         </div>
                         <Badge variant="secondary">{payment.method}</Badge>
@@ -545,14 +667,14 @@ export function CustomersPage() {
               </Card>
 
               {/* Notes */}
-              {selectedCustomer.notes && (
+              {enrichedSelectedCustomer.cleanNotes && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Notes</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {selectedCustomer.notes}
+                      {enrichedSelectedCustomer.cleanNotes}
                     </p>
                   </CardContent>
                 </Card>
@@ -560,15 +682,15 @@ export function CustomersPage() {
 
               {/* Actions */}
               <div className="flex gap-2">
-                <Button className="flex-1">
+                <Button className="flex-1" onClick={() => navigate(`/payments?openAdd=true&customerId=${enrichedSelectedCustomer.id}`)}>
                   <CreditCard className="h-4 w-4 mr-2" />
                   Add Payment
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => handleEditClick(selectedCustomer)}>
+                <Button variant="outline" className="flex-1" onClick={() => handleEditClick(enrichedSelectedCustomer)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Profile
                 </Button>
-                <Button variant="destructive" className="flex-none" onClick={() => handleDeleteCustomer(selectedCustomer.id)}>
+                <Button variant="destructive" className="flex-none" onClick={() => handleDeleteCustomer(enrichedSelectedCustomer.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

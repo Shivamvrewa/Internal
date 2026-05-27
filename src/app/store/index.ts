@@ -5,6 +5,8 @@ import expensesReducer from './slices/expensesSlice';
 import staffReducer from './slices/staffSlice';
 import authReducer from './slices/authSlice';
 import themeReducer from './slices/themeSlice';
+import notificationsReducer from './slices/notificationsSlice';
+import ordersReducer from './slices/ordersSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +16,8 @@ export const store = configureStore({
     expenses: expensesReducer,
     staff: staffReducer,
     theme: themeReducer,
+    notifications: notificationsReducer,
+    orders: ordersReducer,
   },
 });
 

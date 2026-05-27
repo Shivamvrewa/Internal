@@ -23,6 +23,8 @@ import {
   Trash2,
   Plus,
   Shield,
+  Lock,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
@@ -32,11 +34,43 @@ export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { user } = useSelector((state: RootState) => state.auth);
 
+  // Security / App Lock State
+  const [isLockEnabled, setIsLockEnabled] = useState(() => {
+    return localStorage.getItem('app_lock_enabled') === 'true';
+  });
+  const [backupPin, setBackupPin] = useState(() => {
+    return localStorage.getItem('app_lock_pin') || '';
+  });
+  const [confirmPin, setConfirmPin] = useState('');
+  const [isEditingPin, setIsEditingPin] = useState(false);
+
+  const handleSaveBackupPin = () => {
+    if (backupPin.length !== 4) {
+      toast.error('PIN must be exactly 4 digits.');
+      return;
+    }
+    if (backupPin !== confirmPin) {
+      toast.error('PINs do not match. Please verify.');
+      return;
+    }
+    localStorage.setItem('app_lock_pin', backupPin);
+    setIsEditingPin(false);
+    setConfirmPin('');
+    toast.success('Backup security PIN saved successfully!');
+    
+    // Automatically enable lock if it wasn't already configured
+    if (!isLockEnabled) {
+      setIsLockEnabled(true);
+      localStorage.setItem('app_lock_enabled', 'true');
+      toast.info('App Lock has been automatically enabled with your new PIN.');
+    }
+  };
+
   // Company Settings State
-  const [companyName, setCompanyName] = useState('BizManager Pvt Ltd');
-  const [companyAddress, setCompanyAddress] = useState('123 Business Street, Mumbai, Maharashtra');
+  const [companyName, setCompanyName] = useState('The Healthy Bowl');
+  const [companyAddress, setCompanyAddress] = useState('123 Health Street, Mumbai, Maharashtra');
   const [companyPhone, setCompanyPhone] = useState('+91 9876543210');
-  const [companyEmail, setCompanyEmail] = useState('info@bizmanager.com');
+  const [companyEmail, setCompanyEmail] = useState('info@thehealthybowl.com');
   const [gstNumber, setGstNumber] = useState('27AABCU9603R1ZM');
   const [fssaiNumber, setFssaiNumber] = useState('12345678901234');
   const [panNumber, setPanNumber] = useState('AABCU9603R');
@@ -45,8 +79,8 @@ export function SettingsPage() {
   const [bankName, setBankName] = useState('HDFC Bank');
   const [accountNumber, setAccountNumber] = useState('50200012345678');
   const [ifscCode, setIfscCode] = useState('HDFC0001234');
-  const [accountHolderName, setAccountHolderName] = useState('BizManager Pvt Ltd');
-  const [upiId, setUpiId] = useState('bizmanager@hdfc');
+  const [accountHolderName, setAccountHolderName] = useState('The Healthy Bowl');
+  const [upiId, setUpiId] = useState('thehealthybowl@hdfc');
 
   // Notification Settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -57,9 +91,9 @@ export function SettingsPage() {
 
   // User Management State
   const [users, setUsers] = useState([
-    { id: 1, name: 'Admin User', email: 'admin@bizmanager.com', role: 'Admin', status: 'Active' },
-    { id: 2, name: 'Manager User', email: 'manager@bizmanager.com', role: 'Manager', status: 'Active' },
-    { id: 3, name: 'Accountant', email: 'accountant@bizmanager.com', role: 'Accountant', status: 'Active' },
+    { id: 1, name: 'Admin User', email: 'admin@thehealthybowl.com', role: 'Admin', status: 'Active' },
+    { id: 2, name: 'Manager User', email: 'manager@thehealthybowl.com', role: 'Manager', status: 'Active' },
+    { id: 3, name: 'Accountant', email: 'accountant@thehealthybowl.com', role: 'Accountant', status: 'Active' },
   ]);
 
   const handleSaveCompanySettings = () => {
@@ -75,6 +109,7 @@ export function SettingsPage() {
   };
 
   const handleToggleTheme = () => {
+    dispatch(toggleTheme());
     setTheme(theme === 'dark' ? 'light' : 'dark');
     toast.success(`Switched to ${theme === 'dark' ? 'light' : 'dark'} mode`);
   };
@@ -89,7 +124,7 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="company" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto gap-2">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-2">
           <TabsTrigger value="company" className="gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Company</span>
@@ -109,6 +144,10 @@ export function SettingsPage() {
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Users</span>
+          </TabsTrigger>
+          <TabsTrigger value="security" className="gap-2">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
         </TabsList>
 
@@ -490,6 +529,125 @@ export function SettingsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        {/* Security Tab Content */}
+        <TabsContent value="security" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                <Shield className="h-5 w-5 text-emerald-500" />
+                Security & App Lock
+              </CardTitle>
+              <CardDescription>
+                Configure native biometrics (fingerprint/pattern/PIN) and setup your backup PIN to protect access to the app.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/10 transition-colors">
+                  <div className="space-y-0.5 pr-4">
+                    <Label className="text-base font-semibold">Enable Security App Lock</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Require authentication via Android biometrics (fingerprint/pattern/PIN) or backup PIN to open the app.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={isLockEnabled}
+                    onCheckedChange={(checked) => {
+                      if (checked && !localStorage.getItem('app_lock_pin')) {
+                        toast.error('Please set up a 4-digit backup PIN first.');
+                        return;
+                      }
+                      setIsLockEnabled(checked);
+                      localStorage.setItem('app_lock_enabled', checked ? 'true' : 'false');
+                      toast.success(checked ? 'App lock security enabled!' : 'App lock security disabled.');
+                    }}
+                  />
+                </div>
+
+                <div className="p-4 rounded-lg border bg-muted/20 space-y-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-emerald-500" />
+                    Backup 4-Digit PIN Configuration
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    This PIN will be used as a backup when biometrics are unavailable, or when testing in web browsers.
+                  </p>
+
+                  {localStorage.getItem('app_lock_pin') && !isEditingPin ? (
+                    <div className="flex items-center justify-between bg-card p-4 rounded border">
+                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
+                        <Check className="h-4 w-4 bg-emerald-100 dark:bg-emerald-900/30 p-0.5 rounded-full" />
+                        <span>Backup PIN is configured & active</span>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setIsEditingPin(true);
+                        setBackupPin('');
+                        setConfirmPin('');
+                      }}>
+                        Change PIN
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="backupPin">New 4-Digit PIN</Label>
+                          <Input
+                            id="backupPin"
+                            type="password"
+                            pattern="[0-9]*"
+                            inputMode="numeric"
+                            maxLength={4}
+                            value={backupPin}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setBackupPin(val);
+                            }}
+                            placeholder="Enter 4 digits"
+                            className="text-center font-mono tracking-widest text-lg"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPin">Confirm New PIN</Label>
+                          <Input
+                            id="confirmPin"
+                            type="password"
+                            pattern="[0-9]*"
+                            inputMode="numeric"
+                            maxLength={4}
+                            value={confirmPin}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setConfirmPin(val);
+                            }}
+                            placeholder="Confirm 4 digits"
+                            className="text-center font-mono tracking-widest text-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        {localStorage.getItem('app_lock_pin') && (
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setIsEditingPin(false);
+                            setBackupPin(localStorage.getItem('app_lock_pin') || '');
+                            setConfirmPin('');
+                          }}>
+                            Cancel
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={handleSaveBackupPin} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                          <Save className="h-4 w-4" />
+                          Save PIN
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

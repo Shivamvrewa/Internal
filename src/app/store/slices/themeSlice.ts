@@ -1,12 +1,22 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface ThemeState {
   mode: 'light' | 'dark';
   language: 'en' | 'hi';
 }
 
+const getInitialTheme = (): 'light' | 'dark' => {
+  if (typeof window !== 'undefined') {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme;
+    }
+  }
+  return 'light';
+};
+
 const initialState: ThemeState = {
-  mode: 'light',
+  mode: getInitialTheme(),
   language: 'en',
 };
 
@@ -16,6 +26,15 @@ const themeSlice = createSlice({
   reducers: {
     toggleTheme: (state) => {
       state.mode = state.mode === 'light' ? 'dark' : 'light';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('theme', state.mode);
+      }
+    },
+    setThemeMode: (state, action: PayloadAction<'light' | 'dark'>) => {
+      state.mode = action.payload;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('theme', state.mode);
+      }
     },
     setLanguage: (state, action) => {
       state.language = action.payload;
@@ -23,5 +42,5 @@ const themeSlice = createSlice({
   },
 });
 
-export const { toggleTheme, setLanguage } = themeSlice.actions;
+export const { toggleTheme, setThemeMode, setLanguage } = themeSlice.actions;
 export default themeSlice.reducer;

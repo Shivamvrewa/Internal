@@ -4,6 +4,8 @@ import { RootState } from '../store';
 import { fetchStaff, addStaffDb, Staff } from '../store/slices/staffSlice';
 import { v4 as uuidv4 } from 'uuid';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { formatDateTime, getCurrentLocalDateTimeString } from '../services/utils';
+import { PhoneActionsDropdown } from '../components/ui/phone-actions-dropdown';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -80,7 +82,7 @@ export function StaffPage() {
       salary: Number(formData.get('salary')),
       joiningDate: formData.get('joiningDate') as string,
       status: 'active',
-      lastActive: new Date().toISOString().split('T')[0],
+      lastActive: new Date().toISOString(),
     };
     await dispatch(addStaffDb(newStaff));
     setIsAddStaffOpen(false);
@@ -162,7 +164,7 @@ export function StaffPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Joining Date</Label>
-                  <Input name="joiningDate" type="date" required />
+                  <Input name="joiningDate" type="datetime-local" defaultValue={getCurrentLocalDateTimeString()} required />
                 </div>
               </div>
               <div className="flex justify-end gap-2">
@@ -266,12 +268,16 @@ export function StaffPage() {
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Phone className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">{member.mobile}</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    <PhoneActionsDropdown phoneNumber={member.mobile}>
+                      {member.mobile}
+                    </PhoneActionsDropdown>
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Calendar className="h-4 w-4 text-gray-400" />
                   <span className="text-gray-600 dark:text-gray-400">
-                    Joined {member.joiningDate}
+                    Joined {formatDateTime(member.joiningDate)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
@@ -284,7 +290,7 @@ export function StaffPage() {
                   <div className="flex items-center gap-3 text-sm">
                     <Activity className="h-4 w-4 text-gray-400" />
                     <span className="text-gray-600 dark:text-gray-400">
-                      Last active: {member.lastActive}
+                      Last active: {formatDateTime(member.lastActive)}
                     </span>
                   </div>
                 )}
@@ -342,10 +348,14 @@ export function StaffPage() {
                     <TableCell>
                       <div className="space-y-1">
                         <div className="text-sm">{member.email}</div>
-                        <div className="text-xs text-gray-500">{member.mobile}</div>
+                        <div className="text-xs text-gray-500">
+                          <PhoneActionsDropdown phoneNumber={member.mobile}>
+                            {member.mobile}
+                          </PhoneActionsDropdown>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell>{member.joiningDate}</TableCell>
+                    <TableCell>{formatDateTime(member.joiningDate)}</TableCell>
                     <TableCell>
                       <span className="font-semibold text-green-600 dark:text-green-400">
                         ₹{member.salary.toLocaleString('en-IN')}
@@ -357,7 +367,7 @@ export function StaffPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                      {member.lastActive || 'N/A'}
+                      {formatDateTime(member.lastActive) || 'N/A'}
                     </TableCell>
                   </TableRow>
                 ))}
